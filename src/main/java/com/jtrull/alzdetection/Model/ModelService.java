@@ -40,6 +40,7 @@ public class ModelService {
      * @throws Exception
      */
     public Model loadModelFromFile(MultipartFile file) throws Exception {
+        logger.info("entered loadModelFromFile for file: " + file);
         Path destinationFile;
         try {
             if (file.isEmpty()) {

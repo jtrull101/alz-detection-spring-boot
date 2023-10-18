@@ -1,11 +1,8 @@
 package com.jtrull.alzdetection.Model;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -46,7 +43,6 @@ public class ModelController {
     public Model loadModelFromFile(@RequestParam("file") MultipartFile file) throws Exception {
         logger.debug("entered loadModelFromFile for multipartfile: " + file);
         return this.modelService.loadModelFromFile(file);
-
     }
 
     @PostMapping("/load/default")

@@ -1,6 +1,7 @@
 package com.jtrull.alzdetection;
 
 
+import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
@@ -42,13 +43,13 @@ public class ModelTests {
 	@Autowired
 	private ModelService modelService;
 
-    private static final String BASE_URL = "/api/v1/model/";
+    private static final String BASE_URL = "/api/v1/model";
 
     /**
      * Load model from file passed into REST reqeust
      * @throws Exception
      */
-    // @Test
+    @Test
 	@Order(1)
 	public void testAddLoadedModel() throws Exception {
 		Optional<File> savedModel = modelService.getSavedModelInResourcesDir("model/");
@@ -56,13 +57,17 @@ public class ModelTests {
 			throw new Exception("Unable to find saved model");
 		}
 
-		MockMultipartFile mmf = new MockMultipartFile("file", "saved_model.pb", "multipart/mixed",
-				new FileInputStream(savedModel.get()));
+		// MockMultipartFile mmf = new MockMultipartFile("file", "saved_model.pb", "multipart/mixed",
+		// 		new FileInputStream(savedModel.get()));
+		byte[] model = IOUtils.toByteArray(new FileInputStream(savedModel.get()));
+
+		MockMultipartFile mmf = new MockMultipartFile("file", model);
 		MockMultipartHttpServletRequestBuilder multipartRequest = MockMvcRequestBuilders
 				.multipart(BASE_URL +"/load/").file("file", mmf.getBytes());
 
 		mvc.perform(multipartRequest)
-				.andExpect(status().is2xxSuccessful());
+				.andExpect(status().isOk())
+				.andReturn();
 	}
 
     /**
@@ -75,7 +80,7 @@ public class ModelTests {
 		mvc.perform(post(BASE_URL +"/load/default")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{}"))
-				.andExpect(status().is2xxSuccessful());
+				.andExpect(status().isOk());
 	}
 
 	/**
@@ -92,7 +97,7 @@ public class ModelTests {
 		}
 		mvc.perform(get(BASE_URL + model.getId().toString())
 				.contentType(MediaType.APPLICATION_JSON))
-				.andExpect(status().is2xxSuccessful());
+				.andExpect(status().isOk());
 	}
 
     /**
@@ -104,7 +109,7 @@ public class ModelTests {
     public void testGetAllModels() throws Exception {
 		mvc.perform(get(BASE_URL + "/all")
 				.contentType(MediaType.APPLICATION_JSON))
-				.andExpect(status().is2xxSuccessful());
+				.andExpect(status().isOk());
 	}
 
     /**
@@ -122,7 +127,7 @@ public class ModelTests {
 
 		MvcResult result = mvc.perform(delete(BASE_URL + "/delete/" + model.getId().toString())
 				.contentType(MediaType.APPLICATION_JSON))
-				.andExpect(status().is2xxSuccessful())
+				.andExpect(status().isOk())
 				.andReturn();
 		String content = result.getResponse().getContentAsString();
 		assert Boolean.valueOf(content);
@@ -136,7 +141,7 @@ public class ModelTests {
     public void testDeleteAllModels() throws Exception {
         MvcResult result = mvc.perform(delete(BASE_URL + "/delete/all")
 				.contentType(MediaType.APPLICATION_JSON))
-				.andExpect(status().is2xxSuccessful())
+				.andExpect(status().isOk())
 				.andReturn();
         String content = result.getResponse().getContentAsString();
 		assert Boolean.valueOf(content);
