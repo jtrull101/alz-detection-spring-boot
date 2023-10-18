@@ -8,6 +8,8 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,10 +20,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-
 @RestController
 @RequestMapping(path = "api/v1/model")
 public class ModelController {
+    Logger logger = LoggerFactory.getLogger(ModelController.class);
 
     private final Path root = Paths.get("model");
 
@@ -42,33 +44,14 @@ public class ModelController {
 
     @PostMapping("/load")
     public Model loadModelFromFile(@RequestParam("file") MultipartFile file) throws Exception {
-        Path destinationFile;
-        try {
-            if (file.isEmpty()) {
-                throw new Exception("Failed to store empty file.");
-            }
-            destinationFile = this.root.resolve(Paths.get(file.getOriginalFilename())).normalize().toAbsolutePath();
-            if (!destinationFile.getParent().equals(this.root.toAbsolutePath())) {
-                throw new Exception("Cannot store file outside current directory.");
-            }
-            try (InputStream inputStream = file.getInputStream()) {
-                Files.copy(inputStream, destinationFile, StandardCopyOption.REPLACE_EXISTING);
-            }
-        } catch (IOException e) {
-            throw new Exception("Failed to store file.", e);
-        }
-        
-        return this.modelService.loadModelFromFile(destinationFile.toFile());
+        logger.debug("entered loadModelFromFile for multipartfile: " + file);
+        return this.modelService.loadModelFromFile(file);
+
     }
 
     @PostMapping("/load/default")
-    public Model loadDefaultModel() {
+    public Model loadDefaultModel() throws Exception {
         return this.modelService.loadDefaultModel();
-    }
-
-    @PostMapping("/load/{modelId}")
-    public Model loadModelById(@PathVariable Long modelId) {
-        return this.modelService.loadModelById(modelId);
     }
 
     // GET mappings
@@ -90,5 +73,9 @@ public class ModelController {
         return this.modelService.deleteModelById(modelId);
     }
 
+    @DeleteMapping("/delete/all")
+    public boolean deleteAllModels() {
+        return this.modelService.deleteAllModels();
+    }
 
 }
