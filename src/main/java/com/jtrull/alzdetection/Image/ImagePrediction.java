@@ -31,7 +31,18 @@ public class ImagePrediction {
     private ImpairmentEnum actualValue;
     private Long associatedModel;
 
-    
+    public ImagePrediction(Long id, String filepath, Integer confidenceNone, Integer confidenceVeryMild,
+            Integer confidenceMild, Integer confidenceModerate, ImpairmentEnum actualValue, Long associatedModel) {
+        this.id = id;
+        this.filepath = filepath;
+        this.confidenceNone = confidenceNone;
+        this.confidenceVeryMild = confidenceVeryMild;
+        this.confidenceMild = confidenceMild;
+        this.confidenceModerate = confidenceModerate;
+        this.actualValue = actualValue;
+        this.associatedModel = associatedModel;
+    }
+
     public Long getId() {
         return id;
     }

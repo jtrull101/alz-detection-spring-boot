@@ -203,7 +203,7 @@ public class ModelService {
     private Model createModelFromFilepath(File directory, Long desiredId) {
         String filePath = directory.getParent();
         if (desiredId == null) desiredId = generateIdFromPath(filePath);
-        Model m = new Model(desiredId, filePath);
+        Model m = new Model(desiredId, filePath, directory.getName());
         return m;
     }
 

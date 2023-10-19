@@ -22,13 +22,15 @@ public class Model {
     )
     private Long id;
     private String filepath;
+    private String name;
     // private SavedModelBundle model;
 
     public Model(){}
 
-    public Model(Long id, String filepath) {
+    public Model(Long id, String filepath, String name) {
         this.id = id;
         this.filepath = filepath;
+        this.name = name;
     }
     
     public Long getId() {
@@ -43,6 +45,13 @@ public class Model {
     public void setFilepath(String filepath) {
         this.filepath = filepath;
     }
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
 
     @Override
     public String toString() {
@@ -51,8 +60,9 @@ public class Model {
         builder.append(id);
         builder.append(", filepath=");
         builder.append(filepath);
+        builder.append(", name=");
+        builder.append(name);
         builder.append("]");
         return builder.toString();
     }
-
 }

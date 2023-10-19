@@ -1,6 +1,8 @@
 package com.jtrull.alzdetection.Prediction;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public enum ImpairmentEnum {
@@ -19,9 +21,15 @@ public enum ImpairmentEnum {
         return this.val;
     }
 
-    public Optional<ImpairmentEnum> fromString(String val) {
+    public static Optional<ImpairmentEnum> fromString(String val) {
         return Stream.of(values())
             .filter(ie -> ie.toString().equals(val))
             .findFirst();
+    }
+
+    public static List<String> asStrings() {
+        return Stream.of(values())
+            .map(v -> v.toString())
+            .collect(Collectors.toList());
     }
 }

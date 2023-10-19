@@ -48,9 +48,22 @@
 		<!--Tensorflow-java-->
 		<dependency>
 			<groupId>org.tensorflow</groupId>
+			<artifactId>tensorflow-core-api</artifactId>
+			<version>0.5.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.tensorflow</groupId>
 			<artifactId>tensorflow-core-platform</artifactId>
 			<version>0.3.3</version>
 		</dependency>
+
+		<!-- https://mvnrepository.com/artifact/ai.djl/api -->
+		<dependency>
+			<groupId>ai.djl</groupId>
+			<artifactId>api</artifactId>
+			<version>0.24.0</version>
+		</dependency>
+
 
 		<!-- https://mvnrepository.com/artifact/commons-io/commons-io -->
 		<dependency>
@@ -66,11 +79,10 @@
 			<optional>true</optional>
 		</dependency>
 
-		<!-- https://mvnrepository.com/artifact/net.lingala.zip4j/zip4j -->
 		<dependency>
-			<groupId>net.lingala.zip4j</groupId>
-			<artifactId>zip4j</artifactId>
-			<version>2.11.5</version>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-compress</artifactId>
+			<version>1.21</version>
 		</dependency>
 
 
