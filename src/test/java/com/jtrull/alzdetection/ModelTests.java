@@ -1,7 +1,5 @@
 package com.jtrull.alzdetection;
 
-
-import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
@@ -13,9 +11,9 @@ import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.test.web.servlet.request.MockMultipartHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jtrull.alzdetection.Model.Model;
 import com.jtrull.alzdetection.Model.ModelRepository;
 import com.jtrull.alzdetection.Model.ModelService;
@@ -26,7 +24,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.Optional;
+import java.util.zip.ZipInputStream;
 
 
 @SpringBootTest
@@ -48,7 +50,7 @@ public class ModelTests {
      * Load model from file passed into REST reqeust
      * @throws Exception
      */
-    // @Test
+    @Test
 	@Order(1)
 	public void testAddLoadedModel() throws Exception {
 		Optional<File> savedModel = modelService.getSavedModelInResourcesDir("model/");
@@ -56,17 +58,24 @@ public class ModelTests {
 			throw new Exception("Unable to find saved model");
 		}
 
-		// MockMultipartFile mmf = new MockMultipartFile("file", "saved_model.pb", "multipart/mixed",
-		// 		new FileInputStream(savedModel.get()));
-		byte[] model = IOUtils.toByteArray(new FileInputStream(savedModel.get()));
+		String path = savedModel.get().getAbsolutePath();
+        String filename = path.substring(path.lastIndexOf("/")+1);
+		FileInputStream fis = new FileInputStream(path);
+        MockMultipartFile mockMultipartFile = new MockMultipartFile("file", filename, MediaType.APPLICATION_OCTET_STREAM_VALUE, new ZipInputStream(fis));
+        
+        String url = BASE_URL + "/load";
+        MvcResult _return = mvc.perform(MockMvcRequestBuilders.multipart(url)
+                    .file(mockMultipartFile)
+                    .contentType(MediaType.APPLICATION_OCTET_STREAM_VALUE))
+                .andExpect(status().isOk())
+                .andReturn();
 
-		MockMultipartFile mmf = new MockMultipartFile("file", model);
-		MockMultipartHttpServletRequestBuilder multipartRequest = MockMvcRequestBuilders
-				.multipart(BASE_URL +"/load/").file("file", mmf.getBytes());
+		String content = _return.getResponse().getContentAsString();
 
-		mvc.perform(multipartRequest)
-				.andExpect(status().isOk())
-				.andReturn();
+        assert content != null;
+        ObjectMapper mapper = new ObjectMapper();
+        Model model = mapper.readValue(content, Model.class);
+        assert model != null;
 	}
 
 	/**

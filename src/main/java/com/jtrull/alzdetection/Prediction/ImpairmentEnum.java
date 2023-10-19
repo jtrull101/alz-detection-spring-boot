@@ -6,10 +6,10 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public enum ImpairmentEnum {
-    NO_IMPAIRMENT("No Impairment"),
-    VERY_MILD_IMPAIRMENT("Very Mild Impairment"),
     MILD_IMPAIRMENT("Mild Impairment"),
-    MODERATE_IMPAIRMENT("Moderate Impairment");
+    NO_IMPAIRMENT("No Impairment"),
+    MODERATE_IMPAIRMENT("Moderate Impairment"),
+    VERY_MILD_IMPAIRMENT("Very Mild Impairment");
 
     private String val;
 

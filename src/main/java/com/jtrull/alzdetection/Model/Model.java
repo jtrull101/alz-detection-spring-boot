@@ -27,17 +27,13 @@ public class Model {
 
     public Model(){}
 
-    public Model(Long id, String filepath, String name) {
-        this.id = id;
+    public Model(String filepath, String name) {
         this.filepath = filepath;
         this.name = name;
     }
     
     public Long getId() {
         return id;
-    }
-    public void setId(Long id) {
-        this.id = id;
     }
     public String getFilepath() {
         return filepath;

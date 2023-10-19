@@ -12,14 +12,23 @@ import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
+import org.apache.commons.io.FilenameUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import org.tensorflow.SavedModelBundle;
 
+import com.jtrull.alzdetection.Prediction.ImpairmentEnum;
+
+import ai.djl.Application;
+import ai.djl.modality.Classifications;
+import ai.djl.modality.cv.Image;
+import ai.djl.modality.cv.translator.ImageClassificationTranslator;
+import ai.djl.modality.cv.util.NDImageUtils;
+import ai.djl.repository.zoo.Criteria;
+import ai.djl.training.util.ProgressBar;
+import ai.djl.translate.Translator;
 import jakarta.annotation.PostConstruct;
 
 @Service
@@ -28,9 +37,9 @@ public class ModelService {
 
     //TODO: consolidate this
     private final Path root = Paths.get("model");
-    private final String SAVED_MODEL_EXTENSION = ".pb";
+    private final String SAVED_MODEL_ARCHIVE_EXTENSION = ".zip";
 
-    private HashMap<Long, SavedModelBundle> inMemoryModels = new HashMap<>();
+    private HashMap<Long, Criteria<Image, Classifications>> inMemoryModels = new HashMap<>();
 
     private final ModelRepository modelRepository;
     public ModelService(ModelRepository repository) {
@@ -69,8 +78,12 @@ public class ModelService {
         Path destinationFile;
         try {
             if (file.isEmpty()) {
-                throw new Exception("Failed to store empty file.");
+                throw new RuntimeException("Failed to store empty file.");
             }
+            if (!FilenameUtils.getExtension(file.getName()).equals(".zip")) {
+                throw new RuntimeException("Unable to load model from file that is not a .zip");
+            }
+
             Path newPath = Paths.get(root + "/"  + file.getName().hashCode());
             Files.createDirectories(newPath);
             destinationFile = newPath.resolve(Paths.get(file.getOriginalFilename())).normalize().toAbsolutePath();
@@ -78,7 +91,7 @@ public class ModelService {
                 Files.copy(inputStream, destinationFile, StandardCopyOption.REPLACE_EXISTING);
             }
         } catch (IOException e) {
-            throw new Exception("Failed to store file.", e);
+            throw new RuntimeException("Failed to store file.", e);
         }
 
         // Take file and move to its own subdir off of model path
@@ -170,29 +183,25 @@ public class ModelService {
      * @param m
      * @return
      */
-    public SavedModelBundle loadModelIntoTensorflow(Model m) {
-        SavedModelBundle bundle = SavedModelBundle.load(m.getFilepath());
-        return bundle;
+    public Criteria<Image, Classifications> loadModelIntoTensorflow(Model m) {
+        Translator<Image, Classifications> translator = ImageClassificationTranslator.builder()
+                .addTransform(a -> NDImageUtils.resize(a, 128, 128).div(225.0f))
+                .optSynset(ImpairmentEnum.asStrings())
+                .build();
+
+        Criteria<Image, Classifications> criteria = Criteria.builder()
+                .setTypes(Image.class, Classifications.class)
+                .optApplication(Application.CV.IMAGE_CLASSIFICATION)
+                .optEngine("TensorFlow")
+                .optModelPath(Paths.get(m.getFilepath() + "/" + m.getName()))
+                .optModelName(m.getName())
+                .optTranslator(translator)
+                .optProgress(new ProgressBar())
+                .build();
+
+        return criteria;
     }
 
-
-    /**
-     * 
-     * @param directory
-     * @return
-     */
-    private Model createModelFromFilepath(File directory) {
-        return createModelFromFilepath(directory, null);
-    }
-
-    /**
-     * 
-     * @param path
-     * @return
-     */
-    private Long generateIdFromPath(String path) {
-        return UUID.nameUUIDFromBytes(path.getBytes()).getMostSignificantBits();
-    }
 
     /**
      * 
@@ -200,10 +209,9 @@ public class ModelService {
      * @param desiredId
      * @return
      */
-    private Model createModelFromFilepath(File directory, Long desiredId) {
+    private Model createModelFromFilepath(File directory) {
         String filePath = directory.getParent();
-        if (desiredId == null) desiredId = generateIdFromPath(filePath);
-        Model m = new Model(desiredId, filePath, directory.getName());
+        Model m = new Model(filePath, directory.getName());
         return m;
     }
 
@@ -220,7 +228,7 @@ public class ModelService {
         try {
             fileOpt = Files.walk(Paths.get(resource.toURI()))
                     .filter(Files::isRegularFile)
-                    .filter(r -> r.getFileName().toString().contains(SAVED_MODEL_EXTENSION))
+                    .filter(r -> r.getFileName().toString().contains(SAVED_MODEL_ARCHIVE_EXTENSION))
                     .map(x -> x.toFile())
                     .findAny();
         } catch (IOException | URISyntaxException e) {
@@ -234,9 +242,9 @@ public class ModelService {
      * @param m
      * @return
      */
-    public HashMap<Long,SavedModelBundle> addModelToInMemoryModels(Model m) {
-        SavedModelBundle bundle = loadModelIntoTensorflow(m);
-        inMemoryModels.put(m.getId(), bundle);
+    public HashMap<Long, Criteria<Image, Classifications>> addModelToInMemoryModels(Model m) {
+        Criteria<Image, Classifications> criteria = loadModelIntoTensorflow(m);
+        inMemoryModels.put(m.getId(), criteria);
         return inMemoryModels;
     }
 
@@ -255,7 +263,7 @@ public class ModelService {
      * 
      * @return
      */
-    public HashMap<Long, SavedModelBundle> getInMemoryModels() {
+    public HashMap<Long, Criteria<Image, Classifications>> getInMemoryModels() {
         return this.inMemoryModels;
     }
     

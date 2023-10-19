@@ -3,54 +3,44 @@ package com.jtrull.alzdetection.Image;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
-import java.util.Collection;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
-
-import javax.imageio.ImageIO;
-import javax.management.RuntimeErrorException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import org.tensorflow.SavedModelBundle;
 
-import com.jtrull.alzdetection.Model.Model;
-import com.jtrull.alzdetection.Model.ModelRepository;
 import com.jtrull.alzdetection.Model.ModelService;
 import com.jtrull.alzdetection.Prediction.ImpairmentEnum;
 
 import ai.djl.MalformedModelException;
 import ai.djl.inference.Predictor;
 import ai.djl.modality.Classifications;
+import ai.djl.modality.Classifications.Classification;
 import ai.djl.modality.cv.Image;
 import ai.djl.modality.cv.ImageFactory;
-import ai.djl.modality.cv.translator.ImageClassificationTranslator;
-import ai.djl.modality.cv.util.NDImageUtils;
 import ai.djl.repository.zoo.Criteria;
 import ai.djl.repository.zoo.ModelNotFoundException;
 import ai.djl.repository.zoo.ModelZoo;
 import ai.djl.repository.zoo.ZooModel;
 import ai.djl.translate.TranslateException;
-import ai.djl.translate.Translator;
 import jakarta.annotation.PostConstruct;
 
-import java.awt.image.BufferedImage;
 
 @Service
 public class ImageService {
@@ -83,21 +73,40 @@ public class ImageService {
      * @return
      * @throws Exception
      */
-    public ImagePrediction runPredictionForImage(MultipartFile file, Long modelNum) throws Exception {
+    
+    public ImagePrediction runPredictionForImage(MultipartFile file, Long modelNum) {
+        logger.info("entered runPredictionForImage for file: " + file);
+        Path destinationFile;
+        try {
+            if (file.isEmpty()) {
+                throw new RuntimeException("Failed to store empty file.");
+            }
+            
+            String filename = (file.getOriginalFilename() == null) ? file.getName() + file.getBytes().hashCode() : file.getOriginalFilename();
+            @SuppressWarnings("all")
+            Path newPath = Paths.get(root + "/"  + filename.hashCode());
+            
+            Files.createDirectories(newPath);
+            destinationFile = newPath.resolve(Paths.get(filename)).normalize().toAbsolutePath();
+            try (InputStream inputStream = file.getInputStream()) {
+                Files.copy(inputStream, destinationFile, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to store file.", e);
+        }
 
-        // check repository if prediction for this image has already been fetched
+        // Check image repository for previous predictions with this image and model number
+        Optional<ImagePrediction> existingPrediction = findImagePredictionInRepoByFileAndModel(destinationFile.toFile(), modelNum);
+        if (existingPrediction.isPresent()) return existingPrediction.get();
 
         // fetch model from model repo
         if (!modelService.getInMemoryModels().containsKey(modelNum)) {
-            throw new Exception("Unable to run a prediction with model of number " + modelNum
+            throw new RuntimeException("Unable to run a prediction with model of number " + modelNum
                     + " that is missing from the database");
         }
-        SavedModelBundle bundle = modelService.getInMemoryModels().get(modelNum);
+        Criteria<Image, Classifications> criteria = modelService.getInMemoryModels().get(modelNum);
 
-        // FILE PARSING
-
-        // ImagePrediction prediction = runPredictionOnModel(bundle, null);
-        ImagePrediction prediction = runPredictionOnModel(modelService.getModelById(modelNum), null);
+        ImagePrediction prediction = runPredictionOnModel(modelNum, criteria, destinationFile.toFile(), null);
         imageRepository.save(prediction);
         return prediction;
     }
@@ -107,14 +116,13 @@ public class ImageService {
      * @return
      * @throws Exception
      */
-    public ImagePrediction runPredictionForRandomImage(Long modelNum) throws Exception {
+    public ImagePrediction runPredictionForRandomImage(Long modelNum) {
         // fetch model from model repo
-
         if (!modelService.getInMemoryModels().containsKey(modelNum)) {
-            throw new Exception("Unable to run a prediction with model of number " + modelNum
+            throw new RuntimeException("Unable to run a prediction with model of number " + modelNum
                     + " that is missing from the database");
         }
-        SavedModelBundle bundle = modelService.getInMemoryModels().get(modelNum);
+        Criteria<Image, Classifications> criteria = modelService.getInMemoryModels().get(modelNum);
 
         // find random sample in test set
         Random generator = new Random();
@@ -126,11 +134,40 @@ public class ImageService {
         List<File> images = testFiles.get(categoryLabel);
         File randomImage = images.get(generator.nextInt(images.size()));
 
-        // if not in repository, run prediction and add to repository
-        // ImagePrediction prediction = runPredictionOnModel(bundle, randomImage);
-        ImagePrediction prediction = runPredictionOnModel(modelService.getModelById(modelNum), randomImage);
+        // Check image repository for previous predictions with this image and model number
+        Optional<ImagePrediction> existingPrediction = findImagePredictionInRepoByFileAndModel(randomImage, modelNum);
+        if (existingPrediction.isPresent()) return existingPrediction.get();
+
+        // If image repository had no previously predicted data, run a prediction and save into the repository
+        ImagePrediction prediction = runPredictionOnModel(modelNum, criteria, randomImage, categoryLabel);
         imageRepository.save(prediction);
+        logger.debug("Added new image prediction: " + prediction + " to image database");
         return prediction;
+    }
+
+    /**
+     * 
+     * @param file
+     * @param modelNum
+     * @return
+     */
+    public Optional<ImagePrediction> findImagePredictionInRepoByFileAndModel(File file, Long modelNum) {
+        Optional<ImagePrediction> image = imageRepository.findAll().stream()
+            .filter(p -> p.getFilepath().equals(file.getAbsolutePath()))
+            .filter(p -> p.getAssociatedModel().equals(modelNum))
+            .findAny();
+        logger.debug("Found existing prediction for file: " + image + " in database, returning");
+        return image;
+    }
+
+
+    public boolean runDeletePrediction(long fileId, long modelId) {
+        Optional<ImagePrediction> image = imageRepository.findById(fileId);
+        if (image.isEmpty()) { 
+            throw new IllegalStateException("Unable to delete prediction for image with id: " + fileId);
+        }
+        imageRepository.delete(image.get());
+        return true;
     }
 
     /**
@@ -139,20 +176,29 @@ public class ImageService {
      * @return
      * @throws Exception
      */
-    public ImagePrediction runPredictionForRandomFromImpairmentCategory(String impairment, Long modelNum)
-            throws Exception {
-        // download test set if not present
-
+    public ImagePrediction runPredictionForRandomFromImpairmentCategory(String impairment, Long modelNum) {
+        
         // find random sample in test set for specific impairment category
+        Optional<ImpairmentEnum> opt = ImpairmentEnum.fromString(impairment);
+        if (opt.isEmpty()) {
+            throw new RuntimeException("Unable to parse category: " + impairment + ". Expected values=[" + Arrays.asList(ImpairmentEnum.asStrings().toArray()) + "]");
+        }
+        ImpairmentEnum categoryLabel = opt.get();
+        Random generator = new Random();
+        List<File> images = testFiles.get(categoryLabel);
+        File randomImage = images.get(generator.nextInt(images.size()));
+
+        // Check image repository for previous predictions with this image and model number
+        Optional<ImagePrediction> existingPrediction = findImagePredictionInRepoByFileAndModel(randomImage, modelNum);
+        if (existingPrediction.isPresent()) return existingPrediction.get();
 
         // if not in repository, run prediction and add to repository
         if (!modelService.getInMemoryModels().containsKey(modelNum)) {
-            throw new Exception("Unable to run a prediction with model of number " + modelNum
+            throw new RuntimeException("Unable to run a prediction with model of number " + modelNum
                     + " that is missing from the database");
         }
-        SavedModelBundle bundle = modelService.getInMemoryModels().get(modelNum);
-        // ImagePrediction prediction = runPredictionOnModel(bundle, null);
-        ImagePrediction prediction = runPredictionOnModel(modelService.getModelById(modelNum), null);
+        Criteria<Image, Classifications> criteria = modelService.getInMemoryModels().get(modelNum);
+        ImagePrediction prediction = runPredictionOnModel(modelNum, criteria, randomImage, categoryLabel);
         imageRepository.save(prediction);
         return prediction;
     }
@@ -165,9 +211,7 @@ public class ImageService {
      * @param toPredict
      * @return
      */
-    // private ImagePrediction runPredictionOnModel(SavedModelBundle bundle, File
-    // toPredict) {
-    private ImagePrediction runPredictionOnModel(Model model, File toPredict) {
+    private ImagePrediction runPredictionOnModel(Long modelNum, Criteria<Image, Classifications> criteria, File toPredict, ImpairmentEnum actualImpairmentValue) {
         Image image;
         try {
             image = ImageFactory.getInstance().fromFile(toPredict.toPath());
@@ -175,27 +219,9 @@ public class ImageService {
             throw new RuntimeException("Error loading image into image factory: " + e.getMessage());
         }
 
-        Translator<Image, Classifications> translator = ImageClassificationTranslator.builder()
-                .addTransform(a -> NDImageUtils.resize(a, 224).div(225.0f))
-                .optSynset(ImpairmentEnum.asStrings())
-                .build();
-
-        Criteria<Image, Classifications> criteria = Criteria.builder()
-                .setTypes(Image.class, Classifications.class)
-                .optModelPath(Paths.get(model.getFilepath() + "/" + model.getName()))
-                .optModelName(model.getName())
-                .optTranslator(translator)
-                .build();
-
-
-        Collection<ModelZoo> availableModels = ModelZoo.listModelZoo();
-        for (ModelZoo mz : availableModels) {
-            System.out.println(mz);
-        }
-
-        try (ZooModel<Image, Classifications> m = ModelZoo.loadModel(criteria)) {
-            try (Predictor<Image, Classifications> predictor = m.newPredictor()) {
-                Classifications result;
+        Classifications result;
+        try (ZooModel<Image, Classifications> zooModel = ModelZoo.loadModel(criteria)) {
+            try (Predictor<Image,Classifications> predictor = zooModel.newPredictor()) {
                 try {
                     result = predictor.predict(image);
                 } catch (TranslateException e) {
@@ -204,18 +230,33 @@ public class ImageService {
                 }
                 logger.info("Diagnose: {}", result);
             }
+
         } catch (IOException | ModelNotFoundException | MalformedModelException e) {
-            throw new RuntimeException(
-                    "Error loading model with criteria: " + criteria + " Message = " + e.getMessage());
+            throw new RuntimeException("Error while loading model: " + criteria + " Message = " + e.getMessage());
+        }
+        
+        HashMap<ImpairmentEnum, Integer> confidences = new HashMap<>();
+        for (Classification item : result.items()) {
+            int percent = (int) (item.getProbability() * 100);
+            Optional<ImpairmentEnum> enumVal = ImpairmentEnum.fromString(item.getClassName());
+            confidences.put(enumVal.get(), percent);
         }
 
-        return null;
-    }
+        return new ImagePrediction(
+            toPredict.toPath().toString(), 
+            confidences.get(ImpairmentEnum.NO_IMPAIRMENT),
+            confidences.get(ImpairmentEnum.VERY_MILD_IMPAIRMENT),
+            confidences.get(ImpairmentEnum.MILD_IMPAIRMENT),
+            confidences.get(ImpairmentEnum.MODERATE_IMPAIRMENT),
+            actualImpairmentValue, 
+            modelNum);
+    } 
+
 
     /**
      * 
      */
-    private void initializeTestImages() {
+    public void initializeTestImages() {
         try {
             Path path = Files.createDirectories(this.root);
             logger.info("created path: " + path);

@@ -9,5 +9,4 @@ public class AlzDetectionApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(AlzDetectionApplication.class, args);
 	}
-
 }
