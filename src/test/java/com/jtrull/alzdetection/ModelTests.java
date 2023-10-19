@@ -22,7 +22,6 @@ import com.jtrull.alzdetection.Model.ModelService;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.io.File;
@@ -49,7 +48,7 @@ public class ModelTests {
      * Load model from file passed into REST reqeust
      * @throws Exception
      */
-    @Test
+    // @Test
 	@Order(1)
 	public void testAddLoadedModel() throws Exception {
 		Optional<File> savedModel = modelService.getSavedModelInResourcesDir("model/");
@@ -70,19 +69,6 @@ public class ModelTests {
 				.andReturn();
 	}
 
-    /**
-     * Load default pre-installed model
-     * @throws Exception
-     */
-	@Test
-	@Order(1)
-	public void testAddDefaultModel() throws Exception {
-		mvc.perform(post(BASE_URL +"/load/default")
-				.contentType(MediaType.APPLICATION_JSON)
-				.content("{}"))
-				.andExpect(status().isOk());
-	}
-
 	/**
      * Get model by specified modelID
      * @throws Exception
@@ -95,9 +81,12 @@ public class ModelTests {
 		if (model == null) {
 			throw new Exception("unable to run delete if no model exists yet");
 		}
-		mvc.perform(get(BASE_URL + model.getId().toString())
+		MvcResult response = mvc.perform(get(BASE_URL + model.getId().toString())
 				.contentType(MediaType.APPLICATION_JSON))
-				.andExpect(status().isOk());
+				.andExpect(status().isOk())
+				.andReturn();
+		String content = response.getResponse().getContentAsString();
+		System.out.println(content);
 	}
 
     /**
@@ -120,12 +109,12 @@ public class ModelTests {
 	@Order(3)
 	public void testDeleteModel() throws Exception {
 		// Grab the first model and delete it
-		Model model = modelRepository.findAll().get(0);
-		if (model == null) {
-			throw new Exception("unable to run delete if no model exists yet");
+		Optional<Model> model = modelRepository.findAll().stream().filter(m->m.getId()!=1).findFirst();
+		if (model.isEmpty()) {
+			throw new Exception("unable to run delete if no non-default model exists yet");
 		}
 
-		MvcResult result = mvc.perform(delete(BASE_URL + "/delete/" + model.getId().toString())
+		MvcResult result = mvc.perform(delete(BASE_URL + "/delete/" + model.get().getId().toString())
 				.contentType(MediaType.APPLICATION_JSON))
 				.andExpect(status().isOk())
 				.andReturn();

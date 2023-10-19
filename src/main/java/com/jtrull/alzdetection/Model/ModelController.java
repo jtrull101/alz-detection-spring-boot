@@ -1,8 +1,5 @@
 package com.jtrull.alzdetection.Model;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -22,19 +19,11 @@ import org.springframework.web.multipart.MultipartFile;
 public class ModelController {
     Logger logger = LoggerFactory.getLogger(ModelController.class);
 
-    private final Path root = Paths.get("model");
-
     @Autowired
     private ModelService modelService;
 
     public ModelController(ModelService modelService) {
         this.modelService = modelService;
-        try {
-            Files.createDirectories(this.root);
-        } catch (Exception ex) {
-            throw new RuntimeException(
-                    "Could not create the directory where the uploaded files will be stored.", ex);
-        }
     }
 
     // POST/CREATE mappings
@@ -43,11 +32,6 @@ public class ModelController {
     public Model loadModelFromFile(@RequestParam("file") MultipartFile file) throws Exception {
         logger.debug("entered loadModelFromFile for multipartfile: " + file);
         return this.modelService.loadModelFromFile(file);
-    }
-
-    @PostMapping("/load/default")
-    public Model loadDefaultModel() throws Exception {
-        return this.modelService.loadDefaultModel();
     }
 
     // GET mappings

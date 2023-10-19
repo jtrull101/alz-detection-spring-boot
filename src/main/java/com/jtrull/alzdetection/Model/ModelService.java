@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -19,18 +20,42 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.tensorflow.SavedModelBundle;
 
+import jakarta.annotation.PostConstruct;
+
 @Service
 public class ModelService {
     Logger logger = LoggerFactory.getLogger(ModelService.class);
 
     //TODO: consolidate this
     private final Path root = Paths.get("model");
-    private final String DEFAULT_MODEL_PATH = "model/";
     private final String SAVED_MODEL_EXTENSION = ".pb";
+
+    private HashMap<Long, SavedModelBundle> inMemoryModels = new HashMap<>();
 
     private final ModelRepository modelRepository;
     public ModelService(ModelRepository repository) {
         this.modelRepository = repository;
+    }
+
+    @PostConstruct
+    public void init() {
+        try {
+            Path path = Files.createDirectories(this.root);
+            logger.info("created path: " + path);
+        } catch (Exception ex) {
+            throw new RuntimeException(
+                    "Could not create the directory where the uploaded files will be stored.", ex);
+        }
+
+        // load default model into DB
+        try {
+            loadDefaultModel();
+        } catch (Exception e) {
+            logger.error("Unable to load default model: " + e.getMessage());
+            assert false;
+        }
+        
+        initInMemoryModels();
     }
 
     /**
@@ -56,7 +81,7 @@ public class ModelService {
             throw new Exception("Failed to store file.", e);
         }
 
-        // Take file and move to its own subdir off of DEFAULT_MODEL_PATH
+        // Take file and move to its own subdir off of model path
         File resource = findModelResourceInDir(destinationFile.toFile().getParent());
         Model m = createModelFromFilepath(resource);
         return modelRepository.save(m);
@@ -68,7 +93,7 @@ public class ModelService {
      * @throws Exception
      */
     public Model loadDefaultModel() throws Exception {
-        File resource = findModelResourceInDir(DEFAULT_MODEL_PATH);
+        File resource = findModelResourceInDir(root.toString());
         Model m = createModelFromFilepath(resource);
         return modelRepository.save(m);
     }
@@ -80,11 +105,13 @@ public class ModelService {
      * @throws Exception
      */
     public File findModelResourceInDir(String directory) throws Exception {
-         Optional<File> resource = getSavedModelInResourcesDir(DEFAULT_MODEL_PATH);
+         Optional<File> resource = getSavedModelInResourcesDir(directory);
         if (resource.isEmpty()) {
-            throw new Exception("Unable to find model for file: " + DEFAULT_MODEL_PATH);
+            throw new Exception("Unable to find model for file: " + directory);
         }
-        return resource.get();
+        File f = resource.get();
+        logger.info("returning found file: " + f);
+        return f;
     }
 
     /**
@@ -110,7 +137,14 @@ public class ModelService {
      * @return
      */
     public boolean deleteModelById(Long modelId) {
+        if (modelId == 1) {
+            logger.debug("unable to delete default model with id: " + modelId);
+            return false;
+        }
         try{
+            logger.debug("removing model " + modelId + " from in memory models");
+            inMemoryModels.remove(modelId);
+            logger.debug("deleting model " + modelId + " model from database");
             modelRepository.deleteById(modelId);
         }catch(Exception e) {
             return false;
@@ -180,6 +214,7 @@ public class ModelService {
      */
     public Optional<File> getSavedModelInResourcesDir(String path) {
         ClassLoader cl = getClass().getClassLoader();
+        logger.info("Running getResource for path: " + path);
         URL resource = cl.getResource(path);
         Optional<File> fileOpt = Optional.empty();
         try {
@@ -192,6 +227,36 @@ public class ModelService {
             e.printStackTrace();
         }
         return fileOpt;
+    }
+
+     /**
+     * 
+     * @param m
+     * @return
+     */
+    public HashMap<Long,SavedModelBundle> addModelToInMemoryModels(Model m) {
+        SavedModelBundle bundle = loadModelIntoTensorflow(m);
+        inMemoryModels.put(m.getId(), bundle);
+        return inMemoryModels;
+    }
+
+    /**
+     * 
+     */
+    public void initInMemoryModels() {
+        List<Model> models = modelRepository.findAll();
+        for (Model m : models) {
+            logger.debug("loading model into memory: " + m);
+            addModelToInMemoryModels(m);
+        }
+    }
+
+    /**
+     * 
+     * @return
+     */
+    public HashMap<Long, SavedModelBundle> getInMemoryModels() {
+        return this.inMemoryModels;
     }
     
 }

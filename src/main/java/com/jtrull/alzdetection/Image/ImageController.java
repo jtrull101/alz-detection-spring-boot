@@ -1,8 +1,5 @@
 package com.jtrull.alzdetection.Image;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -16,28 +13,18 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.jtrull.alzdetection.Model.ModelController;
-
 import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
 @RequestMapping(path = "api/v1/model/{modelID}/predict")
 public class ImageController {
-    Logger logger = LoggerFactory.getLogger(ModelController.class);
-
-    private final Path root = Paths.get("images");
+    Logger logger = LoggerFactory.getLogger(ImageController.class);
 
     @Autowired
     private ImageService imageService;
 
     public ImageController(ImageService imageService) {
         this.imageService = imageService;
-        try {
-            Files.createDirectories(this.root);
-        } catch (Exception ex) {
-            throw new RuntimeException(
-                    "Could not create the directory where the uploaded files will be stored.", ex);
-        }
     }
 
     // POST mappings
