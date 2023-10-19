@@ -74,7 +74,7 @@ public class ImageService {
      * @throws Exception
      */
     
-    public ImagePrediction runPredictionForImage(MultipartFile file, Long modelNum) {
+    public ImagePrediction runPredictionForImage(MultipartFile file, Long modelId) {
         logger.info("entered runPredictionForImage for file: " + file);
         Path destinationFile;
         try {
@@ -84,7 +84,7 @@ public class ImageService {
             
             String filename = (file.getOriginalFilename() == null) ? file.getName() + file.getBytes().hashCode() : file.getOriginalFilename();
             @SuppressWarnings("all")
-            Path newPath = Paths.get(root + "/"  + filename.hashCode());
+            Path newPath = Paths.get(root + "/"  + modelId + "/" + filename.hashCode());
             
             Files.createDirectories(newPath);
             destinationFile = newPath.resolve(Paths.get(filename)).normalize().toAbsolutePath();
@@ -96,17 +96,17 @@ public class ImageService {
         }
 
         // Check image repository for previous predictions with this image and model number
-        Optional<ImagePrediction> existingPrediction = findImagePredictionInRepoByFileAndModel(destinationFile.toFile(), modelNum);
+        Optional<ImagePrediction> existingPrediction = findImagePredictionInRepoByFileAndModel(destinationFile.toFile(), modelId);
         if (existingPrediction.isPresent()) return existingPrediction.get();
 
         // fetch model from model repo
-        if (!modelService.getInMemoryModels().containsKey(modelNum)) {
-            throw new RuntimeException("Unable to run a prediction with model of number " + modelNum
+        if (!modelService.getInMemoryModels().containsKey(modelId)) {
+            throw new RuntimeException("Unable to run a prediction with model of number " + modelId
                     + " that is missing from the database");
         }
-        Criteria<Image, Classifications> criteria = modelService.getInMemoryModels().get(modelNum);
+        Criteria<Image, Classifications> criteria = modelService.getInMemoryModels().get(modelId);
 
-        ImagePrediction prediction = runPredictionOnModel(modelNum, criteria, destinationFile.toFile(), null);
+        ImagePrediction prediction = runPredictionOnModel(modelId, criteria, destinationFile.toFile(), null);
         imageRepository.save(prediction);
         return prediction;
     }
