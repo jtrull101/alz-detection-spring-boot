@@ -105,6 +105,8 @@ public class ModelTests {
 		String content = response.getResponse().getContentAsString();
 		ObjectMapper mapper = new ObjectMapper();
 		Model readModel = mapper.readValue(content, Model.class);
+		// filepath nullified during serialize
+		model.setFilepath(null);
 		assert model.equals(readModel);
 	}
 

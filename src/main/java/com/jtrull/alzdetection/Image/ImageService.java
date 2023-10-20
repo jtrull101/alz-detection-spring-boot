@@ -3,9 +3,6 @@ package com.jtrull.alzdetection.Image;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -82,12 +79,14 @@ public class ImageService {
                 throw new RuntimeException("Failed to store empty file.");
             }
             
-            String filename = (file.getOriginalFilename() == null) ? file.getName() + file.getBytes().hashCode() : file.getOriginalFilename();
-            @SuppressWarnings("all")
-            Path newPath = Paths.get(root + "/"  + modelId + "/" + filename.hashCode());
-            
+            // TOOD: Uncomment if interested in not running the prediction if filenames are the same
+            //      String filename = (file.getOriginalFilename() == null) ? file.getName() + file.getBytes().hashCode() : file.getOriginalFilename();
+            String filename = file.getName() + file.getBytes().hashCode();
+
+            Path newPath = Paths.get(getClass().getResource("/").getPath() + root + "/"  + modelId + "/" + filename.hashCode());
             Files.createDirectories(newPath);
             destinationFile = newPath.resolve(Paths.get(filename)).normalize().toAbsolutePath();
+            
             try (InputStream inputStream = file.getInputStream()) {
                 Files.copy(inputStream, destinationFile, StandardCopyOption.REPLACE_EXISTING);
             }
@@ -257,36 +256,36 @@ public class ImageService {
      * 
      */
     public void initializeTestImages() {
+        String path = getClass().getResource("/").getPath() + root;
+
+        Path p;
         try {
-            Path path = Files.createDirectories(this.root);
+            p = Files.createDirectories(Paths.get(path));
             logger.info("created path: " + path);
         } catch (Exception ex) {
             throw new RuntimeException(
                     "Could not create the directory where the uploaded files will be stored.", ex);
         }
 
-        // setup test set
-        ClassLoader cl = getClass().getClassLoader();
-        URL resource = cl.getResource(root.toString());
-        logger.info("searching for " + DATASET_NAME + ARCHIVE_FORMAT + " in directory: " + root);
+        // Find the Zipped dataset and unzip if found
+        logger.info("searching for " + DATASET_NAME + ARCHIVE_FORMAT + " in directory: " + p);
         List<File> foundZipFiles = new ArrayList<>();
         try {
-            foundZipFiles = Files.walk(Paths.get(resource.toURI()))
+            foundZipFiles = Files.walk(p)
                     .filter(Files::isRegularFile)
                     .filter(r -> r.getFileName().toString().contains(DATASET_NAME + ARCHIVE_FORMAT))
                     .map(x -> x.toFile())
                     .collect(Collectors.toList());
-        } catch (IOException | URISyntaxException e) {
+        } catch (IOException e) {
             throw new RuntimeException("Error while finding archive of dataset images", e);
         }
 
         logger.info("found zipped combined dataset directory: " + foundZipFiles);
         for (File f : foundZipFiles) {
-            Path targetPath = Paths.get(resource.getPath());
             try (ZipInputStream zipInputStream = new ZipInputStream(Files.newInputStream(f.toPath()))) {
                 ZipEntry entry;
                 while ((entry = zipInputStream.getNextEntry()) != null) {
-                    final Path toPath = targetPath.resolve(entry.getName());
+                    final Path toPath = p.resolve(entry.getName());
                     if (toPath.toString().contains("/train")) {
                         // ignore training data
                         continue;
@@ -309,22 +308,21 @@ public class ImageService {
             }
         }
 
+        // Now the contents have been unzipped. Search for the uncompressed dataset
         Optional<File> opt = Optional.empty();
-        URI resourceURI = null;
         try {
-            resourceURI = resource.toURI();
-            opt = Files.walk(Paths.get(resourceURI))
+            opt = Files.walk(p)
                     .filter(Files::isDirectory)
                     .filter(r -> r.getFileName().toString().contains(DATASET_NAME))
                     .map(x -> x.toFile())
                     .findFirst();
-        } catch (IOException | URISyntaxException e) {
+        } catch (IOException e) {
             throw new RuntimeException("Error while finding unzipped dataset", e);
         }
 
         if (opt.isEmpty()) {
             logger.error("Unable to find Combined Dataset directory after unzipping. Check if " + DATASET_NAME
-                    + " exists at location: " + resourceURI);
+                    + " exists at location: " + p);
             assert false;
         }
 
@@ -334,7 +332,8 @@ public class ImageService {
         // populate testFiles hashmap of all test images mapped to their corresponding
         // categories
         List<File> impairmentCategories = null;
-        Path testDirPath = Paths.get(resourceURI.getPath() + "/" + DATASET_NAME + "/test/");
+        
+        Path testDirPath = Paths.get(p + "/" + DATASET_NAME + "/test/");
         try {
             impairmentCategories = Files.walk(testDirPath)
                     .filter(Files::isDirectory)
@@ -346,15 +345,12 @@ public class ImageService {
         }
 
         if (impairmentCategories == null) {
-            logger.error("Unable to find impairment category subdirectories in dataset at location: " + testDirPath);
-            assert false;
-            return;
+            throw new RuntimeException("Unable to find impairment category subdirectories in dataset at location: " + testDirPath);
         }
 
         for (File f : impairmentCategories) {
             String name = f.getName().replaceAll("\\P{Print}", "");
-            if (name.equals("test"))
-                continue; // exclude parent directory
+            if (name.equals("test")) continue; // exclude parent directory
             logger.info("processing potential impairment category: " + name);
             Optional<ImpairmentEnum> category = ImpairmentEnum.fromString(name);
             if (category.isEmpty()) {

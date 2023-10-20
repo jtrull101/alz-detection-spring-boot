@@ -111,7 +111,7 @@ public class ImagePredictionTests {
         byte[] inputArray = Files.readAllBytes(Paths.get(path));
         MockMultipartFile mockMultipartFile = new MockMultipartFile("image", filename, mediaType.toString(), inputArray);
         
-        String url = createBaseUrl(getModel().getId()) + "/";
+        String url = createBaseUrl(getModel().getId());
         MvcResult _return = mvc.perform(MockMvcRequestBuilders.multipart(url)
                     .file(mockMultipartFile)
                     .contentType(mediaType))

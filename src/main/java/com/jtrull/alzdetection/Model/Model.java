@@ -1,5 +1,7 @@
 package com.jtrull.alzdetection.Model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -21,6 +23,7 @@ public class Model {
         generator = "model_sequence"
     )
     private Long id;
+    @JsonIgnore
     private String filepath;
     private String name;
     // private SavedModelBundle model;

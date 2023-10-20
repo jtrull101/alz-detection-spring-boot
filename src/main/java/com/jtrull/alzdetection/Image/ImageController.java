@@ -32,7 +32,7 @@ public class ImageController {
     // POST mappings
     //  adding new prediction from image
 
-    @PostMapping("/")
+    @PostMapping()
     public ImagePrediction runPredictionForImage(@RequestParam("image") MultipartFile file, HttpServletRequest request) {
         return this.imageService.runPredictionForImage(file, getModelNumFromRequest(request)) ;
     }

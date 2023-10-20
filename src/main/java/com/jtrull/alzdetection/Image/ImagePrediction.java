@@ -1,6 +1,9 @@
 package com.jtrull.alzdetection.Image;
 
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.jtrull.alzdetection.Prediction.ImpairmentEnum;
 
 import jakarta.persistence.Entity;
@@ -24,11 +27,13 @@ public class ImagePrediction {
         generator = "image_sequence"
     )
     private Long id;
+    @JsonIgnore
     private String filepath;
     private Integer conf_NoImpairment;
     private Integer conf_VeryMildImpairment;
     private Integer conf_MildImpairment;
     private Integer conf_ModerateImpairment;
+    @JsonInclude(Include.NON_NULL)
     private ImpairmentEnum actualValue;
     private Long associatedModel;
 

@@ -46,8 +46,9 @@ public class ModelService {
 
     @PostConstruct
     public void init() {
+        String sourcePath = ModelService.class.getResource("/").getPath() + root;
         try {
-            Path path = Files.createDirectories(root);
+            Path path = Files.createDirectories(Paths.get(sourcePath));
             logger.info("created path: " + path);
         } catch (Exception ex) {
             throw new RuntimeException(
