@@ -3,8 +3,6 @@ package com.jtrull.alzdetection.Model;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URISyntaxException;
-import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -35,9 +33,9 @@ import jakarta.annotation.PostConstruct;
 public class ModelService {
     Logger logger = LoggerFactory.getLogger(ModelService.class);
 
-    //TODO: consolidate this
-    private final Path root = Paths.get("model");
-    private final String SAVED_MODEL_ARCHIVE_EXTENSION = ".zip";
+    private static final Path root = Paths.get("model");
+    private static final String SAVED_MODEL_ARCHIVE_EXTENSION = ".zip";
+    public static final String DEFAULT_MODEL_NAME = "default_model" + SAVED_MODEL_ARCHIVE_EXTENSION;
 
     private HashMap<Long, Criteria<Image, Classifications>> inMemoryModels = new HashMap<>();
 
@@ -49,7 +47,7 @@ public class ModelService {
     @PostConstruct
     public void init() {
         try {
-            Path path = Files.createDirectories(this.root);
+            Path path = Files.createDirectories(root);
             logger.info("created path: " + path);
         } catch (Exception ex) {
             throw new RuntimeException(
@@ -61,7 +59,7 @@ public class ModelService {
             loadDefaultModel();
         } catch (Exception e) {
             logger.error("Unable to load default model: " + e.getMessage());
-            assert false;
+            throw new RuntimeException(e);
         }
         
         initInMemoryModels();
@@ -80,12 +78,15 @@ public class ModelService {
             if (file.isEmpty()) {
                 throw new RuntimeException("Failed to store empty file.");
             }
-            if (!FilenameUtils.getExtension(file.getName()).equals(".zip")) {
+            if (!FilenameUtils.getExtension(file.getOriginalFilename()).equals("zip")) {
                 throw new RuntimeException("Unable to load model from file that is not a .zip");
             }
-
-            Path newPath = Paths.get(root + "/"  + file.getName().hashCode());
+            String sourcePath = ModelService.class.getResource("/").getPath() + root;
+            Path newPath = Paths.get(sourcePath + "/" + file.getName().hashCode());
             Files.createDirectories(newPath);
+
+
+            // Take file and move to its own subdir off of model path
             destinationFile = newPath.resolve(Paths.get(file.getOriginalFilename())).normalize().toAbsolutePath();
             try (InputStream inputStream = file.getInputStream()) {
                 Files.copy(inputStream, destinationFile, StandardCopyOption.REPLACE_EXISTING);
@@ -94,8 +95,8 @@ public class ModelService {
             throw new RuntimeException("Failed to store file.", e);
         }
 
-        // Take file and move to its own subdir off of model path
-        File resource = findModelResourceInDir(destinationFile.toFile().getParent());
+
+        File resource = findModelResourceInDir(destinationFile.toFile().getName());
         Model m = createModelFromFilepath(resource);
         return modelRepository.save(m);
     }
@@ -106,7 +107,7 @@ public class ModelService {
      * @throws Exception
      */
     public Model loadDefaultModel() throws Exception {
-        File resource = findModelResourceInDir(root.toString());
+        File resource = findModelResourceInDir(DEFAULT_MODEL_NAME);
         Model m = createModelFromFilepath(resource);
         return modelRepository.save(m);
     }
@@ -115,12 +116,11 @@ public class ModelService {
      * 
      * @param directory
      * @return
-     * @throws Exception
      */
-    public File findModelResourceInDir(String directory) throws Exception {
-         Optional<File> resource = getSavedModelInResourcesDir(directory);
+    public File findModelResourceInDir(String filename) {
+        Optional<File> resource = getSavedModelInResourcesDir(filename);
         if (resource.isEmpty()) {
-            throw new Exception("Unable to find model for file: " + directory);
+            throw new RuntimeException("Unable to find model for file: " + filename + " in directory: " + root);
         }
         File f = resource.get();
         logger.info("returning found file: " + f);
@@ -215,27 +215,53 @@ public class ModelService {
         return m;
     }
 
+
+    private Optional<File> returnFileFromPath(String filename, String path) {
+        Optional<File> fileOpt;
+        try {
+            fileOpt = Files.walk(Paths.get(path))
+                        .filter(Files::isRegularFile)
+                        .filter(r -> r.toFile().getName().equals(filename))
+                        .filter(r -> r.getFileName().toString().contains(SAVED_MODEL_ARCHIVE_EXTENSION))
+                        .map(x -> x.toFile())
+                        .findFirst();
+            return fileOpt;
+
+        } catch (IOException e) {
+            throw new RuntimeException("Error finding model with name " + filename + " in directory: " + path);
+        }
+    }
     /**
      * 
      * @param path
      * @return
      */
-    public Optional<File> getSavedModelInResourcesDir(String path) {
-        ClassLoader cl = getClass().getClassLoader();
+    public Optional<File> getSavedModelInResourcesDir(String filename) {
+        String path = getClass().getResource("/").getPath() + root;
         logger.info("Running getResource for path: " + path);
-        URL resource = cl.getResource(path);
-        Optional<File> fileOpt = Optional.empty();
         try {
-            fileOpt = Files.walk(Paths.get(resource.toURI()))
-                    .filter(Files::isRegularFile)
-                    .filter(r -> r.getFileName().toString().contains(SAVED_MODEL_ARCHIVE_EXTENSION))
+            Optional<File> defaultModelInBasePath = returnFileFromPath(filename, path);
+            if (defaultModelInBasePath.isPresent()) return defaultModelInBasePath;
+
+            // recurisvely find all files
+            Optional<Optional<File>> f = Files.walk(Paths.get(path))
+                    .filter(Files::isDirectory)
                     .map(x -> x.toFile())
-                    .findAny();
-        } catch (IOException | URISyntaxException e) {
-            e.printStackTrace();
+                    .map(x -> returnFileFromPath(filename, x.getAbsolutePath()))
+                    .findFirst();
+                
+            if  (f.isPresent() && f.get().isPresent()) {
+                return f.get();
+            }
+
+        } catch (IOException e) {
+            throw new RuntimeException("Error finding model with name " + filename + " in directory: " + path);
         }
-        return fileOpt;
+
+        return Optional.empty();
     }
+
+    
 
      /**
      * 

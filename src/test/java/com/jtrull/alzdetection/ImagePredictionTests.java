@@ -38,7 +38,6 @@ import java.util.Optional;
 @TestMethodOrder(OrderAnnotation.class)
 public class ImagePredictionTests {
 
-
     @Autowired
 	private MockMvc mvc;
 
@@ -97,6 +96,7 @@ public class ImagePredictionTests {
 
     @Test
 	@Order(2)
+    @RepeatedTest(10)
 	public void testPredictionFromFile() throws Exception {
         Optional<ImagePrediction> imageOpt = imageRepository.findAll().stream().findAny();
         if (imageOpt.isEmpty()) {
@@ -134,6 +134,7 @@ public class ImagePredictionTests {
 
     @Test
     @Order(3)
+    @RepeatedTest(10)
     public void testDeletePrediction() throws Exception {
         Optional<ImagePrediction> imageOpt = imageRepository.findAll().stream().findFirst();
         if (imageOpt.isEmpty()) {
