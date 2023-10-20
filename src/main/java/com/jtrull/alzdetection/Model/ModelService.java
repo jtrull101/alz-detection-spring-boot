@@ -14,7 +14,9 @@ import java.util.Optional;
 import org.apache.commons.io.FilenameUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.jtrull.alzdetection.Prediction.ImpairmentEnum;
@@ -44,100 +46,127 @@ public class ModelService {
         this.modelRepository = repository;
     }
 
+    /**
+     * Invoked after the constructor, perform initialization operations including:
+     * 1) Creating the directory where models will be stored once uploaded,
+     * 2) Loading the default model into the database
+     * 3) Loading each model in the database into the in-memory Tensorflow objects
+     */
     @PostConstruct
-    public void init() {
-        String sourcePath = ModelService.class.getResource("/").getPath() + root;
+    public void init() { 
+
+        // create directories where uploaded models are stored
         try {
-            Path path = Files.createDirectories(Paths.get(sourcePath));
-            logger.info("created path: " + path);
+            Files.createDirectories(Paths.get(returnModelPath()));
         } catch (Exception ex) {
-            throw new RuntimeException(
-                    "Could not create the directory where the uploaded files will be stored.", ex);
+            throw new HttpClientErrorException (HttpStatusCode.valueOf(409), "Could not create the directory where uploaded model files will be stored.");
         }
 
         // load default model into DB
-        try {
-            loadDefaultModel();
-        } catch (Exception e) {
-            logger.error("Unable to load default model: " + e.getMessage());
-            throw new RuntimeException(e);
-        }
+        loadDefaultModel();
         
+        // init the in-memory models
         initInMemoryModels();
     }
 
     /**
+     * Return the path where models will be stored, represented in some way by /resource/model
+     * 
+     * @return
+     */
+    public String returnModelPath() {
+        return getClass().getResource("/").getPath() + root;
+    }
+
+    /**
+     * Given a .zip MultipartFile as input, move this file to the /resources/model/{hash(file.getName())} and load the Model into the database.
      * 
      * @param file
-     * @return
-     * @throws Exception
+     * @return Model - created from this input MultipartFile
      */
-    public Model loadModelFromFile(MultipartFile file) throws Exception {
-        logger.info("entered loadModelFromFile for file: " + file);
+    public Model loadModelFromFile(MultipartFile file) {
+        logger.trace("entered loadModelFromFile for file: " + file);
         Path destinationFile;
-        try {
-            if (file.isEmpty()) {
-                throw new RuntimeException("Failed to store empty file.");
-            }
-            if (!FilenameUtils.getExtension(file.getOriginalFilename()).equals("zip")) {
-                throw new RuntimeException("Unable to load model from file that is not a .zip");
-            }
-            String sourcePath = ModelService.class.getResource("/").getPath() + root;
-            Path newPath = Paths.get(sourcePath + "/" + file.getName().hashCode());
-            Files.createDirectories(newPath);
 
-
-            // Take file and move to its own subdir off of model path
-            destinationFile = newPath.resolve(Paths.get(file.getOriginalFilename())).normalize().toAbsolutePath();
-            try (InputStream inputStream = file.getInputStream()) {
-                Files.copy(inputStream, destinationFile, StandardCopyOption.REPLACE_EXISTING);
-            }
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to store file.", e);
+        // Error checks
+        if (file.isEmpty()) {
+            throw new HttpClientErrorException (HttpStatusCode.valueOf(400), "Failed to store empty file.");
+        }
+        if (!FilenameUtils.getExtension(file.getOriginalFilename()).equals("zip")) {
+            throw new HttpClientErrorException (HttpStatusCode.valueOf(415), "Unable to load model from file that is not a .zip");
         }
 
+        // Create directory to hold new model, constructed of a hash of the model's name.
+        //      This assumption implies unique model zip names
+        Path newPath = Paths.get(returnModelPath() + "/" + file.getName().hashCode());
+        try {
+            Files.createDirectories(newPath);
+        } catch (IOException e) {
+            throw new HttpClientErrorException (HttpStatusCode.valueOf(406), 
+                    "Unable to create new directory to store model at: " + newPath + " message  = " + e.getMessage());
+        }
 
+        // Copy the model .zip to the resources directory
+        destinationFile = newPath.resolve(Paths.get(file.getOriginalFilename())).normalize().toAbsolutePath();
+        try (InputStream inputStream = file.getInputStream()) {
+            Files.copy(inputStream, destinationFile, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            throw new HttpClientErrorException (HttpStatusCode.valueOf(406), 
+                    "Unable to move modle zip file '" + file.getName() + "' to destination: " + destinationFile + " message  = " + e.getMessage());
+        }
+
+        // Find the model.zip in its subdirectory in the resources directory, 
+        //      create a Model object and save to the database
         File resource = findModelResourceInDir(destinationFile.toFile().getName());
         Model m = createModelFromFilepath(resource);
+        // TODO: this may not work
+        addModelToInMemoryModels(m);
         return modelRepository.save(m);
     }
 
     /**
+     * Load the default model packaged with this jar into the database.
      * 
-     * @return
-     * @throws Exception
+     * @return Model - loaded default Model
      */
-    public Model loadDefaultModel() throws Exception {
+    public Model loadDefaultModel() {
         File resource = findModelResourceInDir(DEFAULT_MODEL_NAME);
         Model m = createModelFromFilepath(resource);
         return modelRepository.save(m);
     }
 
     /**
+     * Given a model's filename, attempt to find the file in the expected directory where models are stored.
      * 
-     * @param directory
-     * @return
+     * @param filename
+     * @return File - corresponding to this model if found
      */
     public File findModelResourceInDir(String filename) {
         Optional<File> resource = getSavedModelInResourcesDir(filename);
         if (resource.isEmpty()) {
-            throw new RuntimeException("Unable to find model for file: " + filename + " in directory: " + root);
+            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find model for filename: " + filename);
         }
         File f = resource.get();
-        logger.info("returning found file: " + f);
+        logger.trace("returning found file: " + f);
         return f;
     }
 
     /**
+     * Get the model at the specified Id
      * 
      * @param modelId
      * @return
      */
     public Model getModelById(Long modelId) {
-        return modelRepository.findById(modelId).get();
+        Optional<Model> opt = modelRepository.findById(modelId);
+        if (opt.isEmpty()) {
+            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find model with Id: " + modelId);
+        }
+        return opt.get();
     }
-
+    
     /**
+     * Return a list of all current models in the database
      * 
      * @return
      */
@@ -146,40 +175,47 @@ public class ModelService {
     }
 
     /**
+     * Given a modelId, attempt to delete that model
      * 
      * @param modelId
      * @return
      */
     public boolean deleteModelById(Long modelId) {
         if (modelId == 1) {
-            logger.debug("unable to delete default model with id: " + modelId);
-            return false;
+            throw new HttpClientErrorException (HttpStatusCode.valueOf(403), "Unable to delete default model");
         }
+        if (modelRepository.findById(modelId).isEmpty()){
+            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find model with specified Id: " + modelId);
+        }
+
         try{
-            logger.debug("removing model " + modelId + " from in memory models");
             inMemoryModels.remove(modelId);
-            logger.debug("deleting model " + modelId + " model from database");
             modelRepository.deleteById(modelId);
-        }catch(Exception e) {
-            return false;
+        } catch(Exception e) {
+            throw new HttpClientErrorException (HttpStatusCode.valueOf(500), 
+                "Error occurred during deletion of model with Id:" + modelId + ". message = " + e.getMessage());
         }
         return true;
     }
  
     /**
+     * Delete all models currently existing in the database and in memory.
      * 
      * @return
      */
     public boolean deleteAllModels() {
         try{
+            inMemoryModels.clear();
             modelRepository.deleteAll();
         }catch(Exception e) {
-            return false;
+            throw new HttpClientErrorException (HttpStatusCode.valueOf(500), 
+                "Error occurred during deletion of all models. message = " + e.getMessage());
         }
         return true;
     }
 
     /**
+     * Load the Model object into a Translator and Criteria to be used with the Amazon Tensorflow Java API DJL.
      * 
      * @param m
      * @return
@@ -205,46 +241,52 @@ public class ModelService {
 
 
     /**
+     * Create a Model object representation from a directory.
      * 
      * @param directory
-     * @param desiredId
      * @return
      */
     private Model createModelFromFilepath(File directory) {
-        String filePath = directory.getParent();
-        Model m = new Model(filePath, directory.getName());
-        return m;
+        return new Model(directory.getParent(), directory.getName());
     }
 
-
-    private Optional<File> returnFileFromPath(String filename, String path) {
-        Optional<File> fileOpt;
-        try {
-            fileOpt = Files.walk(Paths.get(path))
-                        .filter(Files::isRegularFile)
-                        .filter(r -> r.toFile().getName().equals(filename))
-                        .filter(r -> r.getFileName().toString().contains(SAVED_MODEL_ARCHIVE_EXTENSION))
-                        .map(x -> x.toFile())
-                        .findFirst();
-            return fileOpt;
-
-        } catch (IOException e) {
-            throw new RuntimeException("Error finding model with name " + filename + " in directory: " + path);
-        }
-    }
     /**
+     * Given the specified path, attempt to find the file with the given filename and extension.
      * 
+     * @param filename
      * @param path
      * @return
      */
+    private Optional<File> returnFileFromPath(String filename, String path) {
+        try {
+            return Files.walk(Paths.get(path))
+                        .filter(Files::isRegularFile)
+                        .filter(r -> r.toFile().getName().equals(filename))
+                        .map(x -> x.toFile())
+                        .findFirst();
+
+        } catch (IOException e) {
+            throw new HttpClientErrorException (HttpStatusCode.valueOf(409), 
+                "Error while traversing path '" + path + "' to find model with name '" + filename + "'. message = " + e.getMessage());
+        }
+    }
+
+    
+
+    /**
+     * Find a model with the specified filename in the resources/model/ directory.
+     * 
+     * @param filename
+     * @return
+     */
     public Optional<File> getSavedModelInResourcesDir(String filename) {
-        String path = getClass().getResource("/").getPath() + root;
+        String path = returnModelPath();
         logger.info("Running getResource for path: " + path);
         try {
             Optional<File> defaultModelInBasePath = returnFileFromPath(filename, path);
             if (defaultModelInBasePath.isPresent()) return defaultModelInBasePath;
 
-            // recurisvely find all files
+            // find all files
             Optional<Optional<File>> f = Files.walk(Paths.get(path))
                     .filter(Files::isDirectory)
                     .map(x -> x.toFile())
@@ -256,15 +298,18 @@ public class ModelService {
             }
 
         } catch (IOException e) {
-            throw new RuntimeException("Error finding model with name " + filename + " in directory: " + path);
+            throw new HttpClientErrorException (HttpStatusCode.valueOf(409), 
+                "Error while traversing path '" + path + "' to find model with name '" + filename + "'. message = " + e.getMessage());
         }
-
         return Optional.empty();
     }
 
     
 
      /**
+     * Add a Model object to the map of current in-memory Criteria objects. The Amazon Tensorflow API can take a bit of time to load in models, 
+     *  and these models once loaded into memory are not Serializable. Store all the required information to spin up a model in the database,
+     *  the Model object, then load the models in the database into memory by creating Criteria objects.
      * 
      * @param m
      * @return
@@ -276,17 +321,14 @@ public class ModelService {
     }
 
     /**
-     * 
+     * Initialize the in-memory models by finding all Models in the ModelRepository and adding in-memory representations of them.
      */
     public void initInMemoryModels() {
-        List<Model> models = modelRepository.findAll();
-        for (Model m : models) {
-            logger.debug("loading model into memory: " + m);
-            addModelToInMemoryModels(m);
-        }
+        modelRepository.findAll().stream().forEach(m -> addModelToInMemoryModels(m));
     }
 
     /**
+     * Get all current in-memory models.
      * 
      * @return
      */

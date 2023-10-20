@@ -9,6 +9,9 @@ import jakarta.persistence.Id;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 
+/**
+ * Represenation of the required files needed to make a Tensorflow model using Amazon DJL.
+ */
 @Entity
 @Table
 public class Model {
@@ -26,7 +29,6 @@ public class Model {
     @JsonIgnore
     private String filepath;
     private String name;
-    // private SavedModelBundle model;
 
     public Model(){}
 
@@ -47,7 +49,6 @@ public class Model {
     public String getName() {
         return name;
     }
-
     public void setName(String name) {
         this.name = name;
     }

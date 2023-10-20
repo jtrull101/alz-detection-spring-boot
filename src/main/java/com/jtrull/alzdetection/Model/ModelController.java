@@ -57,5 +57,4 @@ public class ModelController {
     public boolean deleteAllModels() {
         return this.modelService.deleteAllModels();
     }
-
 }

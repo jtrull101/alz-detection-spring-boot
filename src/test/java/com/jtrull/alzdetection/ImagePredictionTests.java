@@ -1,6 +1,8 @@
 package com.jtrull.alzdetection;
 
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
+import org.apache.commons.lang3.RandomStringUtils;
+import org.json.JSONObject;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
@@ -8,27 +10,36 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.web.client.RestClientResponseException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.io.ByteStreams;
 import com.jtrull.alzdetection.Image.ImagePrediction;
 import com.jtrull.alzdetection.Image.ImageRepository;
+import com.jtrull.alzdetection.Image.ImageService;
 import com.jtrull.alzdetection.Model.Model;
 import com.jtrull.alzdetection.Model.ModelRepository;
-import com.jtrull.alzdetection.Model.ModelService;
 import com.jtrull.alzdetection.Prediction.ImpairmentEnum;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import jakarta.servlet.ServletException;
+
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.io.FileInputStream;
+import java.io.FileWriter;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -37,7 +48,6 @@ import java.util.Optional;
 @AutoConfigureMockMvc
 @TestMethodOrder(OrderAnnotation.class)
 public class ImagePredictionTests {
-
     @Autowired
 	private MockMvc mvc;
 
@@ -45,10 +55,10 @@ public class ImagePredictionTests {
 	private ImageRepository imageRepository;
 
     @Autowired
-    private ModelRepository modelRepository;
+    private ImageService imageService;
 
     @Autowired
-    private ModelService modelService;
+    private ModelRepository modelRepository;
 
     Model model = null;
 
@@ -95,6 +105,25 @@ public class ImagePredictionTests {
 	}
 
     @Test
+	@Order(1)
+    @RepeatedTest(10)
+	public void testRandomPredictionFromInvalidCategory() throws Exception {
+        String impairment = RandomStringUtils.random(5, true, true);
+
+        try {
+            mvc.perform(get(createBaseUrl(getModel().getId()) + "/" + impairment)
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().is4xxClientError());
+            fail("succeeded sending invalid impairment category when expected to fail");
+
+        } catch (ServletException e) {
+            RestClientResponseException httpException = (RestClientResponseException) e.getRootCause();
+            assert httpException.getStatusCode().equals(HttpStatus.valueOf(400));
+            assert httpException.getMessage().contains( "Unable to parse category: " + impairment + ". Expected values=[" + Arrays.asList(ImpairmentEnum.asStrings().toArray()) + "]");
+        }
+	}
+
+    @Test
 	@Order(2)
     @RepeatedTest(10)
 	public void testPredictionFromFile() throws Exception {
@@ -133,6 +162,40 @@ public class ImagePredictionTests {
 	}
 
     @Test
+	@Order(2)
+    @RepeatedTest(10)
+    public void testPredictionFromInvalidFile() throws Exception {
+        String path = imageService.returnImagePath();
+		String filepath = path + "/test.json";
+
+		JSONObject json = new JSONObject();
+		json.put("i am a json file", "not a jpg");
+		FileWriter file = new FileWriter(filepath);
+		file.write(json.toString());
+		file.close();
+		FileInputStream fis = new FileInputStream(filepath);
+
+		try (InputStream is = getClass().getResourceAsStream(filepath)) {
+			MockMultipartFile mockMultipartFile = new MockMultipartFile("image", "test.json", 
+            MediaType.APPLICATION_JSON.toString(), ByteStreams.toByteArray(fis));
+
+			String url = createBaseUrl(getModel().getId());
+			try {
+				mvc.perform(MockMvcRequestBuilders.multipart(url)
+						.file(mockMultipartFile)
+						.contentType(MediaType.APPLICATION_JSON.toString()))
+						.andExpect(status().is4xxClientError());
+                fail("succeeded sending invalid image when expected to fail");
+
+			} catch (ServletException e) {
+				RestClientResponseException httpException = (RestClientResponseException) e.getRootCause();
+                assert httpException.getStatusCode().equals(HttpStatus.valueOf(400));
+				assert httpException.getMessage().contains("is it a valid image?");
+			}
+		}
+    }
+
+    @Test
     @Order(3)
     @RepeatedTest(10)
     public void testDeletePrediction() throws Exception {
@@ -153,7 +216,26 @@ public class ImagePredictionTests {
         assert Boolean.valueOf(content);
     }
 
+    @Test
+    @Order(3)
+    @RepeatedTest(10)
+    public void testInvalidDeletePrediction() throws Exception {
+        long invalidId = 2345234523452345L;
+        try {
+            mvc.perform(delete(createBaseUrl(getModel().getId()) + "/" + invalidId)
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().is4xxClientError());
+            fail("succeeded deleting invalid image when expected to fail");
+
+        } catch (ServletException e) {
+            RestClientResponseException httpException = (RestClientResponseException) e.getRootCause();
+            assert httpException.getStatusCode().equals(HttpStatus.valueOf(404));
+            assert httpException.getMessage().contains("Unable to find prediction with specified Id: " + invalidId);
+        }
+    }
+
     /**
+     * Get a model from the model repository. If unable to find a model in the repository, reload the default model.
      * 
      * @return
      */
@@ -164,12 +246,6 @@ public class ImagePredictionTests {
             model = allModels.get(0);
             return model;
         }
-        try {
-            model = modelService.loadDefaultModel();
-        } catch (Exception e) {
-            assertFalse(true, e.getMessage());
-        }
-        return model;
-        
+        throw new RuntimeException("Unable to find default model, is default model now deletable?");
     }
 }

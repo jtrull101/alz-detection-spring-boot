@@ -35,6 +35,7 @@ public class ImagePrediction {
     private Integer conf_ModerateImpairment;
     @JsonInclude(Include.NON_NULL)
     private ImpairmentEnum actualValue;
+    @JsonIgnore
     private Long associatedModel;
 
     public ImagePrediction(){}

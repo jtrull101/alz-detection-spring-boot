@@ -19,7 +19,9 @@ import java.util.zip.ZipInputStream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.jtrull.alzdetection.Model.ModelService;
@@ -47,6 +49,10 @@ public class ImageService {
 
     private final ImageRepository imageRepository;
     private final ModelService modelService;
+    
+    private static final String DATASET_NAME = "Combined Dataset";
+    private static final String ARCHIVE_FORMAT = ".zip";
+    private static final String IMAGE_TYPE = ".jpg";
 
     HashMap<ImpairmentEnum, List<File>> testFiles = new HashMap<>();
 
@@ -54,36 +60,35 @@ public class ImageService {
         this.imageRepository = imageRepository;
         this.modelService = modelService;
     }
-
-    private static final String DATASET_NAME = "Combined Dataset";
-    private static final String ARCHIVE_FORMAT = ".zip";
-    private static final String IMAGE_TYPE = ".jpg";
-
+    
     @PostConstruct
     public void init() {
         initializeTestImages();
     }
 
     /**
+     * Given an image passed into the /predict endpoint, run a prediction given the specified Tensorflow model Id. 
+     *  The resulting ImagePrediction will give confidences for each Impairment category, providing as accurate
+     *  of a diagnosis as the model is able to perform.
      * 
      * @param file
+     * @param modelId
      * @return
      * @throws Exception
      */
-    
     public ImagePrediction runPredictionForImage(MultipartFile file, Long modelId) {
-        logger.info("entered runPredictionForImage for file: " + file);
-        Path destinationFile;
+        logger.trace("entered runPredictionForImage for file: " + file);
+        Path destinationFile = null;
         try {
             if (file.isEmpty()) {
-                throw new RuntimeException("Failed to store empty file.");
+                throw new HttpClientErrorException (HttpStatusCode.valueOf(400), "Failed to store empty file.");
             }
             
             // TOOD: Uncomment if interested in not running the prediction if filenames are the same
             //      String filename = (file.getOriginalFilename() == null) ? file.getName() + file.getBytes().hashCode() : file.getOriginalFilename();
             String filename = file.getName() + file.getBytes().hashCode();
 
-            Path newPath = Paths.get(getClass().getResource("/").getPath() + root + "/"  + modelId + "/" + filename.hashCode());
+            Path newPath = Paths.get(returnImagePath() + "/"  + modelId + "/" + filename.hashCode());
             Files.createDirectories(newPath);
             destinationFile = newPath.resolve(Paths.get(filename)).normalize().toAbsolutePath();
             
@@ -91,7 +96,8 @@ public class ImageService {
                 Files.copy(inputStream, destinationFile, StandardCopyOption.REPLACE_EXISTING);
             }
         } catch (IOException e) {
-            throw new RuntimeException("Failed to store file.", e);
+            throw new HttpClientErrorException (HttpStatusCode.valueOf(406), 
+                    "Failed to copy new image: " + file + " to required directory " + destinationFile + " message  = " + e.getMessage());
         }
 
         // Check image repository for previous predictions with this image and model number
@@ -100,8 +106,7 @@ public class ImageService {
 
         // fetch model from model repo
         if (!modelService.getInMemoryModels().containsKey(modelId)) {
-            throw new RuntimeException("Unable to run a prediction with model of number " + modelId
-                    + " that is missing from the database");
+            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find model with specified Id: " + modelId);
         }
         Criteria<Image, Classifications> criteria = modelService.getInMemoryModels().get(modelId);
 
@@ -111,17 +116,17 @@ public class ImageService {
     }
 
     /**
+     * Given the specified Tensorflow modelId, grab a random image from all possible Impairment categories and return the prediction.
      * 
      * @return
      * @throws Exception
      */
-    public ImagePrediction runPredictionForRandomImage(Long modelNum) {
+    public ImagePrediction runPredictionForRandomImage(Long modelId) {
         // fetch model from model repo
-        if (!modelService.getInMemoryModels().containsKey(modelNum)) {
-            throw new RuntimeException("Unable to run a prediction with model of number " + modelNum
-                    + " that is missing from the database");
+        if (!modelService.getInMemoryModels().containsKey(modelId)) {
+            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find model with specified Id: " + modelId);         
         }
-        Criteria<Image, Classifications> criteria = modelService.getInMemoryModels().get(modelNum);
+        Criteria<Image, Classifications> criteria = modelService.getInMemoryModels().get(modelId);
 
         // find random sample in test set
         Random generator = new Random();
@@ -134,53 +139,63 @@ public class ImageService {
         File randomImage = images.get(generator.nextInt(images.size()));
 
         // Check image repository for previous predictions with this image and model number
-        Optional<ImagePrediction> existingPrediction = findImagePredictionInRepoByFileAndModel(randomImage, modelNum);
+        Optional<ImagePrediction> existingPrediction = findImagePredictionInRepoByFileAndModel(randomImage, modelId);
         if (existingPrediction.isPresent()) return existingPrediction.get();
 
         // If image repository had no previously predicted data, run a prediction and save into the repository
-        ImagePrediction prediction = runPredictionOnModel(modelNum, criteria, randomImage, categoryLabel);
+        ImagePrediction prediction = runPredictionOnModel(modelId, criteria, randomImage, categoryLabel);
         imageRepository.save(prediction);
         logger.debug("Added new image prediction: " + prediction + " to image database");
         return prediction;
     }
 
     /**
+     * Check the Image database for a prediction that has already occured for the specified File and the modelId
      * 
      * @param file
-     * @param modelNum
+     * @param modelId
      * @return
      */
-    public Optional<ImagePrediction> findImagePredictionInRepoByFileAndModel(File file, Long modelNum) {
+    public Optional<ImagePrediction> findImagePredictionInRepoByFileAndModel(File file, Long modelId) {
         Optional<ImagePrediction> image = imageRepository.findAll().stream()
             .filter(p -> p.getFilepath().equals(file.getAbsolutePath()))
-            .filter(p -> p.getAssociatedModel().equals(modelNum))
+            .filter(p -> p.getAssociatedModel().equals(modelId))
             .findAny();
         logger.debug("Found existing prediction for file: " + image + " in database, returning");
         return image;
     }
 
-
+    /**
+     * Delete a prediction present in the Image database. Useful if a user desired to remove their potentially sensitive data from the server.
+     * 
+     * @param fileId
+     * @param modelId
+     * @return
+     */
     public boolean runDeletePrediction(long fileId, long modelId) {
         Optional<ImagePrediction> image = imageRepository.findById(fileId);
         if (image.isEmpty()) { 
-            throw new IllegalStateException("Unable to delete prediction for image with id: " + fileId);
+            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find prediction with specified Id: " + fileId);
         }
         imageRepository.delete(image.get());
         return true;
     }
 
     /**
+     * Given a specified Impairment category, run a prediction on the specified Tensorflow model. Return this prediction
+     *  and the confidences. 
      * 
      * @param impairment
      * @return
      * @throws Exception
      */
-    public ImagePrediction runPredictionForRandomFromImpairmentCategory(String impairment, Long modelNum) {
+    public ImagePrediction runPredictionForRandomFromImpairmentCategory(String impairment, Long modelId) {
         
         // find random sample in test set for specific impairment category
         Optional<ImpairmentEnum> opt = ImpairmentEnum.fromString(impairment);
-        if (opt.isEmpty()) {
-            throw new RuntimeException("Unable to parse category: " + impairment + ". Expected values=[" + Arrays.asList(ImpairmentEnum.asStrings().toArray()) + "]");
+        if (opt.isEmpty()) { 
+            throw new HttpClientErrorException (HttpStatusCode.valueOf(400), 
+                 "Unable to parse category: " + impairment + ". Expected values=[" + Arrays.asList(ImpairmentEnum.asStrings().toArray()) + "]");
         }
         ImpairmentEnum categoryLabel = opt.get();
         Random generator = new Random();
@@ -188,59 +203,60 @@ public class ImageService {
         File randomImage = images.get(generator.nextInt(images.size()));
 
         // Check image repository for previous predictions with this image and model number
-        Optional<ImagePrediction> existingPrediction = findImagePredictionInRepoByFileAndModel(randomImage, modelNum);
+        Optional<ImagePrediction> existingPrediction = findImagePredictionInRepoByFileAndModel(randomImage, modelId);
         if (existingPrediction.isPresent()) return existingPrediction.get();
 
         // if not in repository, run prediction and add to repository
-        if (!modelService.getInMemoryModels().containsKey(modelNum)) {
-            throw new RuntimeException("Unable to run a prediction with model of number " + modelNum
-                    + " that is missing from the database");
+        if (!modelService.getInMemoryModels().containsKey(modelId)) {
+            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find model with specified Id: " + modelId);
         }
-        Criteria<Image, Classifications> criteria = modelService.getInMemoryModels().get(modelNum);
-        ImagePrediction prediction = runPredictionOnModel(modelNum, criteria, randomImage, categoryLabel);
+        Criteria<Image, Classifications> criteria = modelService.getInMemoryModels().get(modelId);
+        ImagePrediction prediction = runPredictionOnModel(modelId, criteria, randomImage, categoryLabel);
         imageRepository.save(prediction);
         return prediction;
     }
 
     /**
-     * Using DJL (deep java library found on GitHub) leverage tensorflow for
-     * predictions
+     * Using DJL (deep java library found on GitHub) leverage tensorflow for predictions
      * 
      * @param bundle
      * @param toPredict
      * @return
      */
-    private ImagePrediction runPredictionOnModel(Long modelNum, Criteria<Image, Classifications> criteria, File toPredict, ImpairmentEnum actualImpairmentValue) {
+    private ImagePrediction runPredictionOnModel(Long modelId, Criteria<Image, Classifications> criteria, File toPredict, ImpairmentEnum actualImpairmentValue) {
         Image image;
         try {
             image = ImageFactory.getInstance().fromFile(toPredict.toPath());
         } catch (IOException e) {
-            throw new RuntimeException("Error loading image into image factory: " + e.getMessage());
+            throw new HttpClientErrorException (HttpStatusCode.valueOf(400), "Error while loading image " + toPredict.toPath() + " is it a valid image?");
         }
 
+        // Load model into the 'ModelZoo' environment used by the Amazon DJL framework to run a prediction
         Classifications result;
         try (ZooModel<Image, Classifications> zooModel = ModelZoo.loadModel(criteria)) {
             try (Predictor<Image,Classifications> predictor = zooModel.newPredictor()) {
                 try {
                     result = predictor.predict(image);
+                    logger.info("Diagnose: {}", result);
                 } catch (TranslateException e) {
-                    throw new RuntimeException(
-                            "Error while running prediction for image: " + image + ". Message = " + e.getMessage());
+                    throw new HttpClientErrorException (HttpStatusCode.valueOf(400), "Error while running prediction for image: " + image + ". Message = " + e.getMessage());
                 }
-                logger.info("Diagnose: {}", result);
             }
 
-        } catch (IOException | ModelNotFoundException | MalformedModelException e) {
-            throw new RuntimeException("Error while loading model: " + criteria + " Message = " + e.getMessage());
+        } catch (IOException | MalformedModelException e) {
+            throw new HttpClientErrorException (HttpStatusCode.valueOf(400), "Error while loading model: " + criteria + " Message = " + e.getMessage());
+        } catch (ModelNotFoundException e) {
+            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find model for criteria: " + criteria + " Message = " + e.getMessage());
         }
         
+        // Gather a map of confidences used to populate the ImagePrediction returned from this method
         HashMap<ImpairmentEnum, Integer> confidences = new HashMap<>();
         for (Classification item : result.items()) {
-            int percent = (int) (item.getProbability() * 100);
             Optional<ImpairmentEnum> enumVal = ImpairmentEnum.fromString(item.getClassName());
-            confidences.put(enumVal.get(), percent);
+            confidences.put(enumVal.get(), (int) (item.getProbability() * 100));
         }
 
+        // Return new ImagePrediction object
         return new ImagePrediction(
             toPredict.toPath().toString(), 
             confidences.get(ImpairmentEnum.NO_IMPAIRMENT),
@@ -248,27 +264,33 @@ public class ImageService {
             confidences.get(ImpairmentEnum.MILD_IMPAIRMENT),
             confidences.get(ImpairmentEnum.MODERATE_IMPAIRMENT),
             actualImpairmentValue, 
-            modelNum);
+            modelId);
     } 
 
+    /**
+     * Return the path where models will be stored, represented in some way by /resource/model
+     * 
+     * @return
+     */
+    public String returnImagePath() {
+        return getClass().getResource("/").getPath() + root;
+    }
 
     /**
-     * 
+     * Given the Dataset .zip that is supplied with this application, populate the map of test images per impairment category. 
+     *  These images are used in the /random prediction endpoint to supply some dummy MRI data
      */
     public void initializeTestImages() {
-        String path = getClass().getResource("/").getPath() + root;
 
         Path p;
         try {
-            p = Files.createDirectories(Paths.get(path));
-            logger.info("created path: " + path);
+            p = Files.createDirectories(Paths.get(returnImagePath()));
         } catch (Exception ex) {
-            throw new RuntimeException(
-                    "Could not create the directory where the uploaded files will be stored.", ex);
+            throw new HttpClientErrorException (HttpStatusCode.valueOf(409), "Could not create the directory where uploaded model files will be stored.");
         }
 
         // Find the Zipped dataset and unzip if found
-        logger.info("searching for " + DATASET_NAME + ARCHIVE_FORMAT + " in directory: " + p);
+        logger.trace("searching for " + DATASET_NAME + ARCHIVE_FORMAT + " in directory: " + p);
         List<File> foundZipFiles = new ArrayList<>();
         try {
             foundZipFiles = Files.walk(p)
@@ -277,10 +299,10 @@ public class ImageService {
                     .map(x -> x.toFile())
                     .collect(Collectors.toList());
         } catch (IOException e) {
-            throw new RuntimeException("Error while finding archive of dataset images", e);
+            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find dataset with name '" + DATASET_NAME + ARCHIVE_FORMAT + "'. message = " + e.getMessage());
         }
 
-        logger.info("found zipped combined dataset directory: " + foundZipFiles);
+        logger.trace("found zipped combined dataset directory: " + foundZipFiles);
         for (File f : foundZipFiles) {
             try (ZipInputStream zipInputStream = new ZipInputStream(Files.newInputStream(f.toPath()))) {
                 ZipEntry entry;
@@ -293,18 +315,17 @@ public class ImageService {
                     // create directories for nested zip
                     if (entry.isDirectory()) {
                         if (!toPath.toFile().exists()) {
-                            logger.info("creating required subdirectory: " + toPath);
+                            logger.trace("creating required subdirectory: " + toPath);
                             Files.createDirectory(toPath);
                         }
                     } else {
                         if (!toPath.toFile().exists()) {
-                            logger.info("unzipping file: " + zipInputStream + " to path: " + toPath);
                             Files.copy(zipInputStream, toPath);
                         }
                     }
                 }
             } catch (IOException e) {
-                throw new RuntimeException("Error while uncompressing dataset archive", e);
+                throw new HttpClientErrorException (HttpStatusCode.valueOf(406), "Error while uncompressing dataset archive. message = " + e.getMessage());
             }
         }
 
@@ -317,20 +338,16 @@ public class ImageService {
                     .map(x -> x.toFile())
                     .findFirst();
         } catch (IOException e) {
-            throw new RuntimeException("Error while finding unzipped dataset", e);
+            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find unzipped dataset with name '" + DATASET_NAME + "'. message = " + e.getMessage());
         }
-
         if (opt.isEmpty()) {
-            logger.error("Unable to find Combined Dataset directory after unzipping. Check if " + DATASET_NAME
-                    + " exists at location: " + p);
-            assert false;
+            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find Combined Dataset directory after unzipping. Check if " + DATASET_NAME + " exists at location: " + p);
         }
 
         File foundCombinedDatasetDir = opt.get();
-        logger.info("found unzipped combined dataset directory: " + foundCombinedDatasetDir);
+        logger.trace("found unzipped combined dataset directory: " + foundCombinedDatasetDir);
 
-        // populate testFiles hashmap of all test images mapped to their corresponding
-        // categories
+        // populate testFiles hashmap of all test images mapped to their corresponding categories
         List<File> impairmentCategories = null;
         
         Path testDirPath = Paths.get(p + "/" + DATASET_NAME + "/test/");
@@ -341,21 +358,19 @@ public class ImageService {
                     .collect(Collectors.toList());
 
         } catch (IOException e) {
-            throw new RuntimeException("Error while finding /test directory at location: " + testDirPath);
+            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Error while finding /test directory at location: " + testDirPath);
         }
-
         if (impairmentCategories == null) {
-            throw new RuntimeException("Unable to find impairment category subdirectories in dataset at location: " + testDirPath);
+            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find impairment category subdirectories in dataset at location: " + testDirPath);
         }
 
         for (File f : impairmentCategories) {
             String name = f.getName().replaceAll("\\P{Print}", "");
             if (name.equals("test")) continue; // exclude parent directory
-            logger.info("processing potential impairment category: " + name);
+            logger.trace("processing potential impairment category: " + name);
             Optional<ImpairmentEnum> category = ImpairmentEnum.fromString(name);
             if (category.isEmpty()) {
-                throw new RuntimeException(
-                        "Error while determining ImpairmentEnum category from directory name: " + name);
+                throw new HttpClientErrorException (HttpStatusCode.valueOf(406), "Error while determining ImpairmentEnum category from directory name: " + name);
             }
 
             List<File> images = new ArrayList<>();
@@ -366,11 +381,10 @@ public class ImageService {
                         .map(x -> x.toFile())
                         .collect(Collectors.toList());
             } catch (IOException e) {
-                throw new RuntimeException("Error while gathering images from category " + name);
+                throw new HttpClientErrorException (HttpStatusCode.valueOf(400), "Error while gathering images from category " + name);
             }
 
-            if ((testFiles.containsKey(category.get()) && testFiles.get(category.get()).size() < images.size())
-                    || !testFiles.containsKey(category.get())) {
+            if ((testFiles.containsKey(category.get()) && testFiles.get(category.get()).size() < images.size()) || !testFiles.containsKey(category.get())) {
                 logger.info("adding " + images.size() + " images to category: " + category.get());
                 testFiles.put(category.get(), images);
             }
