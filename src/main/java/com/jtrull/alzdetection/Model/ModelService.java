@@ -121,7 +121,10 @@ public class ModelService {
         Model m = createModelFromFilepath(resource);
         // TODO: this may not work
         addModelToInMemoryModels(m);
-        return modelRepository.save(m);
+        
+        synchronized (modelRepository) {
+            return modelRepository.save(m);
+        }
     }
 
     /**
@@ -188,9 +191,13 @@ public class ModelService {
             throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find model with specified Id: " + modelId);
         }
 
-        try{
-            inMemoryModels.remove(modelId);
-            modelRepository.deleteById(modelId);
+        try {
+            synchronized (inMemoryModels) {
+                inMemoryModels.remove(modelId);
+            }
+            synchronized (modelRepository) {
+                modelRepository.deleteById(modelId);
+            }
         } catch(Exception e) {
             throw new HttpClientErrorException (HttpStatusCode.valueOf(500), 
                 "Error occurred during deletion of model with Id:" + modelId + ". message = " + e.getMessage());
@@ -204,9 +211,13 @@ public class ModelService {
      * @return
      */
     public boolean deleteAllModels() {
-        try{
-            inMemoryModels.clear();
-            modelRepository.deleteAll();
+        try {
+            synchronized (inMemoryModels) {
+                inMemoryModels.clear();
+            }
+            synchronized (modelRepository) {
+                modelRepository.deleteAll();
+            }
         }catch(Exception e) {
             throw new HttpClientErrorException (HttpStatusCode.valueOf(500), 
                 "Error occurred during deletion of all models. message = " + e.getMessage());
@@ -316,7 +327,9 @@ public class ModelService {
      */
     public HashMap<Long, Criteria<Image, Classifications>> addModelToInMemoryModels(Model m) {
         Criteria<Image, Classifications> criteria = loadModelIntoTensorflow(m);
-        inMemoryModels.put(m.getId(), criteria);
+        synchronized (inMemoryModels) {
+            inMemoryModels.put(m.getId(), criteria);
+        }
         return inMemoryModels;
     }
 

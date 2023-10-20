@@ -1,5 +1,6 @@
 package com.jtrull.alzdetection;
 
+import org.junit.experimental.ParallelComputer;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.json.JSONObject;
@@ -7,6 +8,7 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.runner.JUnitCore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -232,6 +234,17 @@ public class ImagePredictionTests {
             assert httpException.getStatusCode().equals(HttpStatus.valueOf(404));
             assert httpException.getMessage().contains("Unable to find prediction with specified Id: " + invalidId);
         }
+    }
+
+    /**
+	 * Run all tests in class concurrently
+	 */
+	@Test
+	@Order(5)
+	@RepeatedTest(10)
+    public void runAllTests() {
+        Class<?>[] classes = { ImagePredictionTests.class };
+        JUnitCore.runClasses(new ParallelComputer(true, true), classes);
     }
 
     /**

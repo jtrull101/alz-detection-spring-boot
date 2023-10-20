@@ -111,7 +111,9 @@ public class ImageService {
         Criteria<Image, Classifications> criteria = modelService.getInMemoryModels().get(modelId);
 
         ImagePrediction prediction = runPredictionOnModel(modelId, criteria, destinationFile.toFile(), null);
-        imageRepository.save(prediction);
+        synchronized (imageRepository) {
+            imageRepository.save(prediction);
+        }
         return prediction;
     }
 
@@ -144,7 +146,9 @@ public class ImageService {
 
         // If image repository had no previously predicted data, run a prediction and save into the repository
         ImagePrediction prediction = runPredictionOnModel(modelId, criteria, randomImage, categoryLabel);
-        imageRepository.save(prediction);
+        synchronized (imageRepository) {
+            imageRepository.save(prediction);
+        }
         logger.debug("Added new image prediction: " + prediction + " to image database");
         return prediction;
     }
@@ -177,7 +181,9 @@ public class ImageService {
         if (image.isEmpty()) { 
             throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find prediction with specified Id: " + fileId);
         }
-        imageRepository.delete(image.get());
+        synchronized (imageRepository) {
+            imageRepository.delete(image.get());
+        }
         return true;
     }
 
@@ -212,7 +218,9 @@ public class ImageService {
         }
         Criteria<Image, Classifications> criteria = modelService.getInMemoryModels().get(modelId);
         ImagePrediction prediction = runPredictionOnModel(modelId, criteria, randomImage, categoryLabel);
-        imageRepository.save(prediction);
+        synchronized (imageRepository) {
+            imageRepository.save(prediction);
+        }
         return prediction;
     }
 
@@ -349,7 +357,6 @@ public class ImageService {
 
         // populate testFiles hashmap of all test images mapped to their corresponding categories
         List<File> impairmentCategories = null;
-        
         Path testDirPath = Paths.get(p + "/" + DATASET_NAME + "/test/");
         try {
             impairmentCategories = Files.walk(testDirPath)
@@ -367,6 +374,7 @@ public class ImageService {
         for (File f : impairmentCategories) {
             String name = f.getName().replaceAll("\\P{Print}", "");
             if (name.equals("test")) continue; // exclude parent directory
+            
             logger.trace("processing potential impairment category: " + name);
             Optional<ImpairmentEnum> category = ImpairmentEnum.fromString(name);
             if (category.isEmpty()) {

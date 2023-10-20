@@ -1,11 +1,14 @@
 package com.jtrull.alzdetection;
 
+import org.javatuples.Pair;
 import org.json.JSONObject;
+import org.junit.experimental.ParallelComputer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
+import org.junit.runner.JUnitCore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -36,7 +39,6 @@ import java.io.FileWriter;
 import java.io.InputStream;
 import java.util.Optional;
 
-
 @SpringBootTest
 @AutoConfigureMockMvc
 @TestMethodOrder(OrderAnnotation.class)
@@ -64,6 +66,21 @@ public class ModelTests {
 	@Order(1)
 	@RepeatedTest(10)
 	public void testLoadModel() throws Exception {
+		Pair<String, Model> pair = runLoadModelRequest();
+		String modelName = pair.getValue0();
+		Model model = pair.getValue1();
+		assert model != null;
+		assert model.getName().equals(modelName);
+		
+	}
+
+	/**
+	 * Load a model into the API using the /model/load endpoint.
+	 * 
+	 * @return
+	 * @throws Exception
+	 */
+	public Pair<String, Model> runLoadModelRequest() throws Exception {
 		String path = findSavedModel().getAbsolutePath();
         String filename = path.substring(path.lastIndexOf("/")+1);
 		String modelName = modelNum + "-" + filename;
@@ -82,9 +99,7 @@ public class ModelTests {
 			String content = _return.getResponse().getContentAsString();
 
 			assert content != null;
-			Model model = MAPPPER.readValue(content, Model.class);
-			assert model != null;
-			assert model.getName().equals(modelName);
+			return new Pair<String,Model>(modelName, MAPPPER.readValue(content, Model.class));
 		} 
 	}
 
@@ -172,15 +187,34 @@ public class ModelTests {
 			throw new Exception("unable to run get if no model exists yet");
 		}
 		Model model = modelRepository.findAll().get(0);
-		MvcResult response = mvc.perform(get(BASE_URL + "/" + model.getId().toString())
+		Model readModel = runGetModelRequest(model);
+		model.setFilepath(null); // filepath nullified during serialize
+		assert model.equals(readModel);
+	}
+
+	/**
+	 * Run GET request for a model, either with or without an input model specified. If no input specified, find the first model in the database.
+	 * @param inputModel
+	 * @return
+	 * @throws Exception
+	 */
+	public Model runGetModelRequest(Model inputModel) throws Exception {
+		// Grab the first model and assert we can get it
+		if (modelRepository.findAll().size() < 0) {
+			throw new Exception("unable to run get if no model exists yet");
+		}
+		Long modelId = modelRepository.findAll().get(0).getId();
+		if (inputModel != null) {
+			modelId = inputModel.getId();
+		}
+
+		MvcResult response = mvc.perform(get(BASE_URL + "/" + modelId)
 				.contentType(MediaType.APPLICATION_JSON))
 				.andExpect(status().isOk())
 				.andReturn();
 
 		String content = response.getResponse().getContentAsString();
-		Model readModel = MAPPPER.readValue(content, Model.class);
-		model.setFilepath(null); // filepath nullified during serialize
-		assert model.equals(readModel);
+		return MAPPPER.readValue(content, Model.class);
 	}
 
 	/**
@@ -320,6 +354,17 @@ public class ModelTests {
 				.andReturn();
         String content = result.getResponse().getContentAsString();
 		assert Boolean.valueOf(content);
+    }
+
+	/**
+	 * Run all tests in class concurrently
+	 */
+	@Test
+	@Order(5)
+	@RepeatedTest(10)
+    public void runAllTests() {
+        Class<?>[] classes = { ModelTests.class };
+        JUnitCore.runClasses(new ParallelComputer(true, true), classes);
     }
 
 	/**
