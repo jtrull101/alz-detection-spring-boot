@@ -119,7 +119,6 @@ public class ModelService {
         //      create a Model object and save to the database
         File resource = findModelResourceInDir(destinationFile.toFile().getName());
         Model m = createModelFromFilepath(resource);
-        // TODO: this may not work
         addModelToInMemoryModels(m);
         
         synchronized (modelRepository) {

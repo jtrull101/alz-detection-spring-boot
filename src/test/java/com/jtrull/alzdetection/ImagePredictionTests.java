@@ -243,7 +243,9 @@ public class ImagePredictionTests {
 	@Order(5)
 	@RepeatedTest(10)
     public void runAllTests() {
-        Class<?>[] classes = { ImagePredictionTests.class };
+        int numConcurrent = 1_000_000;
+        Class<?>[] classes  = new Class<?>[numConcurrent];
+        Arrays.fill(classes, ImagePredictionTests.class);
         JUnitCore.runClasses(new ParallelComputer(true, true), classes);
     }
 

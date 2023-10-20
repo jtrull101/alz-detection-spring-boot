@@ -37,6 +37,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.InputStream;
+import java.util.Arrays;
 import java.util.Optional;
 
 @SpringBootTest
@@ -363,7 +364,9 @@ public class ModelTests {
 	@Order(5)
 	@RepeatedTest(10)
     public void runAllTests() {
-        Class<?>[] classes = { ModelTests.class };
+		int numConcurrent = 1_000_000;
+        Class<?>[] classes  = new Class<?>[numConcurrent];
+        Arrays.fill(classes, ModelTests.class);
         JUnitCore.runClasses(new ParallelComputer(true, true), classes);
     }
 
