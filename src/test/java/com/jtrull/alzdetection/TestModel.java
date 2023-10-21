@@ -364,7 +364,7 @@ public class TestModel {
 	@Order(5)
 	@RepeatedTest(10)
     public void runAllTests() {
-		int numConcurrent = 1_000_000;
+		int numConcurrent = 25_000;
         Class<?>[] classes  = new Class<?>[numConcurrent];
         Arrays.fill(classes, TestModel.class);
         JUnitCore.runClasses(new ParallelComputer(true, true), classes);

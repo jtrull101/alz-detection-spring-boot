@@ -212,10 +212,15 @@ public class ModelService {
     public boolean deleteAllModels() {
         try {
             synchronized (inMemoryModels) {
-                inMemoryModels.clear();
+                inMemoryModels.entrySet().stream()
+                    .filter(e -> e != null).filter(e -> e.getKey() != null)
+                    .filter(e -> e.getKey() != 1)
+                    .forEach(e -> inMemoryModels.remove(e.getKey()));
             }
             synchronized (modelRepository) {
-                modelRepository.deleteAll();
+                modelRepository.findAll().stream()
+                    .filter(m -> m.getId() != 1)
+                    .forEach(m -> modelRepository.delete(m));
             }
         }catch(Exception e) {
             throw new HttpClientErrorException (HttpStatusCode.valueOf(500), 

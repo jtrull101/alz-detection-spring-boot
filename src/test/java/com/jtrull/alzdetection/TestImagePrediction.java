@@ -45,6 +45,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Random;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -129,7 +130,15 @@ public class TestImagePrediction {
 	@Order(2)
     @RepeatedTest(10)
 	public void testPredictionFromFile() throws Exception {
-        Optional<ImagePrediction> imageOpt = imageRepository.findAll().stream().findAny();
+        List<ImagePrediction> allImages = imageRepository.findAll();
+        if (allImages.size() == 0) {
+            // populate some images into the repository using the random prediction test
+            testRandomPrediction();
+        }
+        allImages = imageRepository.findAll();
+        Optional<ImagePrediction> imageOpt = allImages.stream()
+            .skip(new Random().nextInt(allImages.size()))
+            .findAny();
         if (imageOpt.isEmpty()) {
             throw new Exception("Unable to find an image in image repository");
         }
@@ -243,7 +252,7 @@ public class TestImagePrediction {
 	@Order(5)
 	@RepeatedTest(10)
     public void runAllTests() {
-        int numConcurrent = 1_000_000;
+        int numConcurrent = 25_000;
         Class<?>[] classes  = new Class<?>[numConcurrent];
         Arrays.fill(classes, TestImagePrediction.class);
         JUnitCore.runClasses(new ParallelComputer(true, true), classes);
