@@ -9,8 +9,11 @@
 name: Java CI with Maven
 
 on:
-  push
-  pull_request
+  push:
+  pull_request:
+  schedule:
+    # Runs every day at 8 AM
+    - cron: '0 8 */2 * *' 
 
 jobs:
   build:
