@@ -43,7 +43,7 @@ import java.util.Optional;
 @SpringBootTest
 @AutoConfigureMockMvc
 @TestMethodOrder(OrderAnnotation.class)
-public class ModelTests {
+public class TestModel {
     @Autowired
 	private MockMvc mvc;
 
@@ -366,7 +366,7 @@ public class ModelTests {
     public void runAllTests() {
 		int numConcurrent = 1_000_000;
         Class<?>[] classes  = new Class<?>[numConcurrent];
-        Arrays.fill(classes, ModelTests.class);
+        Arrays.fill(classes, TestModel.class);
         JUnitCore.runClasses(new ParallelComputer(true, true), classes);
     }
 

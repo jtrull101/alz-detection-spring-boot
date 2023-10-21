@@ -49,7 +49,7 @@ import java.util.Optional;
 @SpringBootTest
 @AutoConfigureMockMvc
 @TestMethodOrder(OrderAnnotation.class)
-public class ImagePredictionTests {
+public class TestImagePrediction {
     @Autowired
 	private MockMvc mvc;
 
@@ -245,7 +245,7 @@ public class ImagePredictionTests {
     public void runAllTests() {
         int numConcurrent = 1_000_000;
         Class<?>[] classes  = new Class<?>[numConcurrent];
-        Arrays.fill(classes, ImagePredictionTests.class);
+        Arrays.fill(classes, TestImagePrediction.class);
         JUnitCore.runClasses(new ParallelComputer(true, true), classes);
     }
 

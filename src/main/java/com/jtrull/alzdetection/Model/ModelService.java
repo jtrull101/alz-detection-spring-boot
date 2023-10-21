@@ -291,7 +291,7 @@ public class ModelService {
      */
     public Optional<File> getSavedModelInResourcesDir(String filename) {
         String path = returnModelPath();
-        logger.info("Running getResource for path: " + path);
+        logger.trace("Running getResource for path: " + path);
         try {
             Optional<File> defaultModelInBasePath = returnFileFromPath(filename, path);
             if (defaultModelInBasePath.isPresent()) return defaultModelInBasePath;
