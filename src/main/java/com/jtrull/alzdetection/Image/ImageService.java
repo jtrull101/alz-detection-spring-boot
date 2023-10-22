@@ -24,7 +24,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.jtrull.alzdetection.Model.ModelRepository;
 import com.jtrull.alzdetection.Model.ModelService;
 import com.jtrull.alzdetection.Prediction.ImpairmentEnum;
 
@@ -50,7 +49,6 @@ public class ImageService {
 
     private final ImageRepository imageRepository;
     private final ModelService modelService;
-    private final ModelRepository modelRepository;
     
     private static final String DATASET_NAME = "Combined Dataset";
     private static final String ARCHIVE_FORMAT = ".zip";
@@ -58,10 +56,9 @@ public class ImageService {
 
     HashMap<ImpairmentEnum, List<File>> testFiles = new HashMap<>();
 
-    public ImageService(ImageRepository imageRepository, ModelService modelService, ModelRepository modelRepository) {
+    public ImageService(ImageRepository imageRepository, ModelService modelService) {
         this.imageRepository = imageRepository;
         this.modelService = modelService;
-        this.modelRepository = modelRepository;
     }
     
     @PostConstruct
@@ -225,20 +222,6 @@ public class ImageService {
             imageRepository.save(prediction);
         }
         return prediction;
-    }
-
-    public Criteria<Image, Classifications> getModelFromModelService(long modelId) {
-        logger.info("searching for model with Id: " + modelId);
-        if (!modelService.getInMemoryModels().containsKey(modelId)) {
-            logger.info("model with Id: " + modelId + " missing from in memory models");
-            if (modelRepository.findById(modelId) != null) {
-                logger.info("model with Id: " + modelId + " found in model repository");
-                modelService.addModelToInMemoryModels(modelRepository.findById(modelId).get(), modelId);
-            }
-            logger.error("unable to find model with Id: " + modelId + " in model repository");
-            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find model with Id: " + modelId);
-        }
-        return modelService.getInMemoryModels().get(modelId);
     }
 
     /**

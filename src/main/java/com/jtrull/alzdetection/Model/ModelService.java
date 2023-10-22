@@ -190,7 +190,7 @@ public class ModelService {
             throw new HttpClientErrorException (HttpStatusCode.valueOf(403), "Unable to delete default model");
         }
         if (modelRepository.findById(modelId).isEmpty()){
-            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find model with Id: " + modelId);
+            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find model with specified Id: " + modelId);
         }
 
         try {

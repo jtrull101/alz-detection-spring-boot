@@ -2,13 +2,11 @@ package com.jtrull.alzdetection;
 
 import org.javatuples.Pair;
 import org.json.JSONObject;
-import org.junit.Assert;
 import org.junit.experimental.ParallelComputer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
-import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.runner.JUnitCore;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,7 +32,6 @@ import static org.junit.jupiter.api.Assertions.fail;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.junit.jupiter.api.parallel.ExecutionMode.SAME_THREAD;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -42,7 +39,6 @@ import java.io.FileWriter;
 import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Optional;
-import java.util.Random;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -60,7 +56,7 @@ public class TestModel {
     private static final String BASE_URL = "/api/v1/model";
 	private static final ObjectMapper MAPPPER = new ObjectMapper();
 
-	private static final int TEST_INVOCATIONS = 1;
+	private int modelNum = 0;
 
     /**
      * Load model from file passed into REST request. We will assert GET/DELETE later.
@@ -69,14 +65,18 @@ public class TestModel {
      */
     @Test
 	@Order(1)
-	@RepeatedTest(TEST_INVOCATIONS)
+	@RepeatedTest(10)
 	public void testLoadModel() throws Exception {
-		Pair<String, Model> pair = runLoadModelRequest(modelService, getClass(), mvc);
+		Pair<String, Model> pair = runLoadModelRequest(modelService, modelNum, getClass(), mvc);
 		String modelName = pair.getValue0();
 		Model model = pair.getValue1();
 		assert model != null;
 		assert model.getName().equals(modelName);
 		
+	}
+
+	public static String getModelPath(ModelService modelService) throws Exception {
+		return findSavedModel(modelService).getAbsolutePath();
 	}
 
 	/**
@@ -86,14 +86,14 @@ public class TestModel {
 	 * @return
 	 * @throws Exception
 	 */
-	public static <T> Pair<String, Model> runLoadModelRequest(ModelService modelService, Class<T> clazz, MockMvc mvc) throws Exception {
+	public static <T> Pair<String, Model> runLoadModelRequest(ModelService modelService, long modelNum, Class<T> clazz, MockMvc mvc) throws Exception {
 		String path = getModelPath(modelService);
         String filename = path.substring(path.lastIndexOf("/")+1);
-		String modelName = new Random().nextInt(1000) + "-" + filename;
+		String modelName = modelNum + "-" + filename;
 		FileInputStream fis = new FileInputStream(path);
 
 		try (InputStream is = clazz.getResourceAsStream(path)) {
-			MockMultipartFile mockMultipartFile = new MockMultipartFile("file", modelName, "application/zip", ByteStreams.toByteArray(fis));
+			MockMultipartFile mockMultipartFile = new MockMultipartFile("file", modelNum + "-" + filename, "application/zip", ByteStreams.toByteArray(fis));
 
 			String url = BASE_URL + "/load";
 			MvcResult _return = mvc.perform(MockMvcRequestBuilders.multipart(url)
@@ -116,14 +116,13 @@ public class TestModel {
 	 */
 	@Test
 	@Order(2)
-	@RepeatedTest(TEST_INVOCATIONS)
+	@RepeatedTest(10)
 	public void testLoadInvalidModel() throws Exception {
 		String path = findSavedModel(modelService).getAbsolutePath();
         String filename = path.substring(path.lastIndexOf("/")+1);
-		String modelName = new Random().nextInt(1000) + "-" + filename;
 
 		try (InputStream is = getClass().getResourceAsStream(path)) {
-			MockMultipartFile mockMultipartFile = new MockMultipartFile("file", modelName, "application/zip", 
+			MockMultipartFile mockMultipartFile = new MockMultipartFile("file", modelNum + "-" + filename, "application/zip", 
 					ByteStreams.toByteArray(InputStream.nullInputStream()));
 
 			String url = BASE_URL + "/load";
@@ -135,7 +134,7 @@ public class TestModel {
 				fail("succeeded sending invalid model when expected to fail");
 
 			} catch (ServletException e) {
-				RestClientResponseException httpException = (RestClientResponseException) e.getRootCause(); 
+				RestClientResponseException httpException = (RestClientResponseException) e.getRootCause();
 				assert httpException.getStatusCode().equals(HttpStatus.valueOf(400));
 				assert httpException.getMessage().contains("Failed to store empty file");
 			}
@@ -149,7 +148,7 @@ public class TestModel {
 	 */
 	@Test
 	@Order(2)
-	@RepeatedTest(TEST_INVOCATIONS)
+	@RepeatedTest(10)
 	public void testLoadNonZipAsModel() throws Exception {
 		String path = modelService.returnModelPath();
 		String filepath = path + "/test.json";
@@ -187,7 +186,7 @@ public class TestModel {
      */
 	@Test 
 	@Order(2)
-	@RepeatedTest(TEST_INVOCATIONS)
+	@RepeatedTest(10)
 	public void testGetModel() throws Exception {
 		// Grab the first model and assert we can get it
 		if (modelRepository.findAll().size() < 0) {
@@ -231,7 +230,7 @@ public class TestModel {
 	 */
 	@Test 
 	@Order(2)
-	@RepeatedTest(TEST_INVOCATIONS)
+	@RepeatedTest(10)
 	public void testGetModelInvalidId() throws Exception {
 		long invalidId = 2345234523452345L;
 		try {
@@ -255,7 +254,7 @@ public class TestModel {
      */
     @Test
     @Order(2)
-	@RepeatedTest(TEST_INVOCATIONS)
+	@RepeatedTest(10)
     public void testGetAllModels() throws Exception {
 		// Get all models and verify an array of Models is returned
 		MvcResult _return = mvc.perform(get(BASE_URL + "/all")
@@ -268,7 +267,7 @@ public class TestModel {
 		// Iterate through each model and get it individually to ensure individual 
 		//		getting for each model returns the same as getAll()
 		for (Model m : models) {
-			MvcResult response = mvc.perform(get(BASE_URL + "/" + m.getId())
+			MvcResult response = mvc.perform(get(BASE_URL + "/" + m.getId().toString())
 				.contentType(MediaType.APPLICATION_JSON))
 				.andExpect(status().isOk())
 				.andReturn();
@@ -286,7 +285,7 @@ public class TestModel {
      */
 	@Test
 	@Order(3)
-	@RepeatedTest(TEST_INVOCATIONS)
+	@RepeatedTest(10)
 	public void testInvalidModelDelete() throws Exception {
 		long invalidId = 4892374923L;
 		try {
@@ -296,9 +295,9 @@ public class TestModel {
 			fail("succeeded sending invalid model delete when expected to fail");
 
 		} catch (ServletException e) {
-			RestClientResponseException httpException = (RestClientResponseException) e.getRootCause();
-			assert httpException.getStatusCode().equals(HttpStatus.valueOf(404));
-			assert httpException.getMessage().contains("Unable to find model with Id: " + invalidId);
+				RestClientResponseException httpException = (RestClientResponseException) e.getRootCause();
+				assert httpException.getStatusCode().equals(HttpStatus.valueOf(404));
+				assert httpException.getMessage().contains("Unable to find model with specified Id: " + invalidId);
 		}
 	}
 
@@ -307,7 +306,7 @@ public class TestModel {
 	 */
 	@Test
 	@Order(3)
-	@RepeatedTest(TEST_INVOCATIONS)
+	@RepeatedTest(10)
 	public void testDeleteDefaultModel() throws Exception {
 		try {
 			mvc.perform(delete(BASE_URL + "/delete/1")
@@ -329,8 +328,7 @@ public class TestModel {
 	 */
 	@Test
 	@Order(3)
-	@RepeatedTest(TEST_INVOCATIONS)
-	@Execution(SAME_THREAD) 
+	@RepeatedTest(5)
 	public void testDeleteModel() throws Exception {
 		// Grab the first model and delete it
 		Optional<Model> model = modelRepository.findAll().stream().filter(m->m.getId() != 1).findFirst();
@@ -338,7 +336,7 @@ public class TestModel {
 			throw new Exception("unable to run delete if no non-default model exists yet");
 		}
 
-		MvcResult result = mvc.perform(delete(BASE_URL + "/delete/" + model.get().getId())
+		MvcResult result = mvc.perform(delete(BASE_URL + "/delete/" + model.get().getId().toString())
 				.contentType(MediaType.APPLICATION_JSON))
 				.andExpect(status().isOk())
 				.andReturn();
@@ -354,8 +352,7 @@ public class TestModel {
      */
     @Test
     @Order(4)
-	@RepeatedTest(TEST_INVOCATIONS)
-	@Execution(SAME_THREAD) 
+	@RepeatedTest(10)
     public void testDeleteAllModels() throws Exception {
         MvcResult result = mvc.perform(delete(BASE_URL + "/delete/all")
 				.contentType(MediaType.APPLICATION_JSON))
@@ -370,7 +367,7 @@ public class TestModel {
 	 */
 	@Test
 	@Order(5)
-	@RepeatedTest(TEST_INVOCATIONS)
+	@RepeatedTest(10)
     public void runAllTests() {
 		int numConcurrent = 25_000;
         Class<?>[] classes  = new Class<?>[numConcurrent];
@@ -388,12 +385,8 @@ public class TestModel {
 	private static File findSavedModel(ModelService modelService) throws Exception {
 		Optional<File> savedModel = modelService.getSavedModelInResourcesDir(ModelService.DEFAULT_MODEL_NAME);
 		if (savedModel.isEmpty()) {
-			Assert.fail("Unable to find saved model");
+			throw new Exception("Unable to find saved model");
 		}
 		return savedModel.get();
-	}
-
-	public static String getModelPath(ModelService modelService) throws Exception {
-		return findSavedModel(modelService).getAbsolutePath();
 	}
 }
