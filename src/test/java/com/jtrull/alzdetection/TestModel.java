@@ -71,16 +71,12 @@ public class TestModel {
 	@Order(1)
 	@RepeatedTest(TEST_INVOCATIONS)
 	public void testLoadModel() throws Exception {
-		Pair<String, Model> pair = runLoadModelRequest(modelService, modelNum, getClass(), mvc);
+		Pair<String, Model> pair = runLoadModelRequest(modelService, getClass(), mvc);
 		String modelName = pair.getValue0();
 		Model model = pair.getValue1();
 		assert model != null;
 		assert model.getName().equals(modelName);
 		
-	}
-
-	public static String getModelPath(ModelService modelService) throws Exception {
-		return findSavedModel(modelService).getAbsolutePath();
 	}
 
 	/**
@@ -90,14 +86,14 @@ public class TestModel {
 	 * @return
 	 * @throws Exception
 	 */
-	public static <T> Pair<String, Model> runLoadModelRequest(ModelService modelService, long modelNum, Class<T> clazz, MockMvc mvc) throws Exception {
+	public static <T> Pair<String, Model> runLoadModelRequest(ModelService modelService, Class<T> clazz, MockMvc mvc) throws Exception {
 		String path = getModelPath(modelService);
         String filename = path.substring(path.lastIndexOf("/")+1);
 		String modelName = new Random().nextInt(1000) + "-" + filename;
 		FileInputStream fis = new FileInputStream(path);
 
 		try (InputStream is = clazz.getResourceAsStream(path)) {
-			MockMultipartFile mockMultipartFile = new MockMultipartFile("file", modelNum + "-" + filename, "application/zip", ByteStreams.toByteArray(fis));
+			MockMultipartFile mockMultipartFile = new MockMultipartFile("file", modelName, "application/zip", ByteStreams.toByteArray(fis));
 
 			String url = BASE_URL + "/load";
 			MvcResult _return = mvc.perform(MockMvcRequestBuilders.multipart(url)
