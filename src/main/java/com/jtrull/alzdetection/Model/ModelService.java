@@ -121,14 +121,11 @@ public class ModelService {
         //      create a Model object and save to the database
         File resource = findModelResourceInDir(destinationFile.toFile().getName());
         Model m = createModelFromFilepath(resource);
-
+        addModelToInMemoryModels(m);
         
         synchronized (modelRepository) {
-            m = modelRepository.save(m);
-        } 
-
-        addModelToInMemoryModels(m, m.getId()); 
-        return m;
+            return modelRepository.save(m);
+        }
     }
 
     /**
@@ -192,7 +189,7 @@ public class ModelService {
             throw new HttpClientErrorException (HttpStatusCode.valueOf(403), "Unable to delete default model");
         }
         if (modelRepository.findById(modelId).isEmpty()){
-            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find model with Id: " + modelId);
+            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find model with specified Id: " + modelId);
         }
 
         try {
@@ -229,12 +226,9 @@ public class ModelService {
                     .filter(m -> m.getId() != 1)
                     .forEach(m -> modelRepository.delete(m));
             }
-
-            loadDefaultModel();
-
         }catch(Exception e) {
             throw new HttpClientErrorException (HttpStatusCode.valueOf(500), 
-                "Error occurred during deletion of all models. cause = " + e.getCause());
+                "Error occurred during deletion of all models. message = " + e.getMessage());
         }
         return true;
     }
@@ -339,11 +333,10 @@ public class ModelService {
      * @param m
      * @return
      */
-    public HashMap<Long, Criteria<Image, Classifications>> addModelToInMemoryModels(Model m, long modelId) {
+    public HashMap<Long, Criteria<Image, Classifications>> addModelToInMemoryModels(Model m) {
         Criteria<Image, Classifications> criteria = loadModelIntoTensorflow(m);
-        if (m.getId() != null) modelId = m.getId();
         synchronized (inMemoryModels) {
-            inMemoryModels.put(modelId, criteria);
+            inMemoryModels.put(m.getId(), criteria);
         }
         return inMemoryModels;
     }
@@ -352,7 +345,7 @@ public class ModelService {
      * Initialize the in-memory models by finding all Models in the ModelRepository and adding in-memory representations of them.
      */
     public void initInMemoryModels() {
-        modelRepository.findAll().stream().forEach(m -> addModelToInMemoryModels(m, m.getId()));
+        modelRepository.findAll().stream().forEach(m -> addModelToInMemoryModels(m));
     }
 
     /**

@@ -1,6 +1,5 @@
 package com.jtrull.alzdetection;
 
-import org.junit.Assert;
 import org.junit.experimental.ParallelComputer;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -10,8 +9,6 @@ import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.runner.JUnitCore;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -30,7 +27,6 @@ import com.jtrull.alzdetection.Image.ImageRepository;
 import com.jtrull.alzdetection.Image.ImageService;
 import com.jtrull.alzdetection.Model.Model;
 import com.jtrull.alzdetection.Model.ModelRepository;
-import com.jtrull.alzdetection.Model.ModelService;
 import com.jtrull.alzdetection.Prediction.ImpairmentEnum;
 
 import jakarta.servlet.ServletException;
@@ -40,7 +36,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.InputStream;
@@ -69,9 +64,10 @@ public class TestImagePrediction {
     private static final int TEST_INVOCATIONS = AlzDetectionApplicationTests.TEST_INVOCATIONS;
     private static final ObjectMapper MAPPER = AlzDetectionApplicationTests.MAPPPER;
 
+
     @Test
 	@Order(1)
-    @RepeatedTest(TEST_INVOCATIONS)
+    @RepeatedTest(10)
 	public void testRandomPrediction() throws Exception {
         String url = createPredictUrl(getModel(1L).getId());
         MvcResult _return = mvc.perform(get(url + "/random")
@@ -88,7 +84,7 @@ public class TestImagePrediction {
 
     @Test
 	@Order(1)
-    @RepeatedTest(TEST_INVOCATIONS)
+    @RepeatedTest(10)
 	public void testRandomPredictionFromCategory() throws Exception {
         for (ImpairmentEnum val : ImpairmentEnum.values()) {
             MvcResult _return = mvc.perform(get(createPredictUrl(getModel(1L).getId()) + "/" + val.toString())
@@ -106,7 +102,7 @@ public class TestImagePrediction {
 
     @Test
 	@Order(1)
-    @RepeatedTest(TEST_INVOCATIONS)
+    @RepeatedTest(10)
 	public void testRandomPredictionFromInvalidCategory() throws Exception {
         String impairment = RandomStringUtils.random(5, true, true);
 
@@ -118,16 +114,14 @@ public class TestImagePrediction {
 
         } catch (ServletException e) {
             RestClientResponseException httpException = (RestClientResponseException) e.getRootCause();
-            Assert.assertTrue("status code did not match 400 as expected, found: " + httpException.getStatusCode(), 
-                httpException.getStatusCode().equals(HttpStatus.valueOf(400)));
-            Assert.assertTrue("status message was not as expected, found: " + httpException.getStatusCode(), 
-                httpException.getMessage().contains( "Unable to parse category: " + impairment + ". Expected values=[" + Arrays.asList(ImpairmentEnum.asStrings().toArray()) + "]"));
+            assert httpException.getStatusCode().equals(HttpStatus.valueOf(400));
+            assert httpException.getMessage().contains( "Unable to parse category: " + impairment + ". Expected values=[" + Arrays.asList(ImpairmentEnum.asStrings().toArray()) + "]");
         }
 	}
 
     @Test
 	@Order(2)
-    @RepeatedTest(TEST_INVOCATIONS)
+    @RepeatedTest(10)
 	public void testPredictionFromFile() throws Exception {
         ImagePrediction initialImagePrediction = getInitialImagePrediction();
  
@@ -185,23 +179,23 @@ public class TestImagePrediction {
 
     @Test
 	@Order(2)
-    @RepeatedTest(TEST_INVOCATIONS)
+    @RepeatedTest(10)
     public void testPredictionFromInvalidFile() throws Exception {
         String path = imageService.returnImagePath();
-		String filepath = path + "/test-" + num++ + ".json";
-        File f = new File(filepath);
-        if (!f.exists()) {
-            JSONObject json = new JSONObject();
-            json.put("i am a json file", "not a jpg");
-            FileWriter file = new FileWriter(filepath);
-            file.write(json.toString());
-            file.close();
-        }
-		
+		String filepath = path + "/test.json";
+
+		JSONObject json = new JSONObject();
+		json.put("i am a json file", "not a jpg");
+		FileWriter file = new FileWriter(filepath);
+		file.write(json.toString());
+		file.close();
+		FileInputStream fis = new FileInputStream(filepath);
+
 		try (InputStream is = getClass().getResourceAsStream(filepath)) {
 			MockMultipartFile mockMultipartFile = new MockMultipartFile("image", "test.json", 
-            MediaType.APPLICATION_JSON.toString(), ByteStreams.toByteArray(new FileInputStream(filepath)));
+            MediaType.APPLICATION_JSON.toString(), ByteStreams.toByteArray(fis));
 
+			String url = createBaseUrl(getModel().getId());
 			try {
 				mvc.perform(MockMvcRequestBuilders.multipart(createPredictUrl(getModel(1L).getId()))
 						.file(mockMultipartFile)
@@ -211,10 +205,8 @@ public class TestImagePrediction {
 
 			} catch (ServletException e) {
 				RestClientResponseException httpException = (RestClientResponseException) e.getRootCause();
-                Assert.assertTrue("status message was not as expected, found: " + httpException.getStatusCode(), 
-                    httpException.getMessage().contains("is it a valid image?"));
-                Assert.assertTrue("status code did not match 400 as expected, found: " + httpException.getStatusCode(), 
-                    httpException.getStatusCode().equals(HttpStatus.valueOf(400)));
+                assert httpException.getStatusCode().equals(HttpStatus.valueOf(400));
+				assert httpException.getMessage().contains("is it a valid image?");
 			}
 		}
     }
@@ -298,8 +290,8 @@ public class TestImagePrediction {
     }
 
     @Test
-    @Order(5)
-    @RepeatedTest(TEST_INVOCATIONS)
+    @Order(3)
+    @RepeatedTest(10)
     public void testDeletePrediction() throws Exception {
         Optional<ImagePrediction> imageOpt = imageRepository.findAll().stream().findFirst();
         if (imageOpt.isEmpty()) {
@@ -319,8 +311,8 @@ public class TestImagePrediction {
     }
 
     @Test
-    @Order(5)
-    @RepeatedTest(TEST_INVOCATIONS)  
+    @Order(3)
+    @RepeatedTest(10)
     public void testInvalidDeletePrediction() throws Exception {
         long invalidId = 2345234523452345L;
         try {
@@ -331,10 +323,8 @@ public class TestImagePrediction {
 
         } catch (ServletException e) {
             RestClientResponseException httpException = (RestClientResponseException) e.getRootCause();
-            Assert.assertTrue("status code did not match 404 as expected, found: " + httpException.getStatusCode(), 
-                httpException.getStatusCode().equals(HttpStatus.valueOf(404)));
-            Assert.assertTrue("status message was not as expected, found: " + httpException.getStatusCode(), 
-                httpException.getMessage().contains("Unable to find prediction with specified Id: " + invalidId));
+            assert httpException.getStatusCode().equals(HttpStatus.valueOf(404));
+            assert httpException.getMessage().contains("Unable to find prediction with specified Id: " + invalidId);
         }
     }
 
@@ -347,10 +337,22 @@ public class TestImagePrediction {
     }
 
     /**
+	 * Run all tests in class concurrently
+	 */
+	@Test
+	@Order(5)
+	@RepeatedTest(10)
+    public void runAllTests() {
+        int numConcurrent = 25_000;
+        Class<?>[] classes  = new Class<?>[numConcurrent];
+        Arrays.fill(classes, TestImagePrediction.class);
+        JUnitCore.runClasses(new ParallelComputer(true, true), classes);
+    }
+
+    /**
      * Get a model from the model repository. If unable to find a model in the repository, reload the default model.
      * 
      * @return
-     * @throws Exception
      */
     public Model getModel(Long desiredId) throws Exception {
         synchronized (modelRepository) {
@@ -371,5 +373,10 @@ public class TestImagePrediction {
                 .findAny()
                 .orElseThrow(() -> new RuntimeException("Unable to pick random model"));
         }
+
+        
+
+
+        throw new RuntimeException("Unable to find default model, is default model now deletable?");
     }
 }

@@ -7,8 +7,10 @@ import org.junit.experimental.ParallelComputer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestClassOrder;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.ClassOrderer;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.runner.JUnitCore;
 import org.slf4j.Logger;
@@ -50,6 +52,8 @@ import java.util.Random;
 @SpringBootTest
 @AutoConfigureMockMvc
 @TestMethodOrder(OrderAnnotation.class)
+@TestClassOrder(ClassOrderer.OrderAnnotation.class)
+@Order(3)
 public class TestModel {
 	public static final Logger LOGGER = LoggerFactory.getLogger(TestModel.class);
     @Autowired private MockMvc mvc;
@@ -385,7 +389,7 @@ public class TestModel {
 		int numConcurrent = 25_000;
         Class<?>[] classes  = new Class<?>[numConcurrent];
         Arrays.fill(classes, TestModel.class);
-        JUnitCore.runClasses(new ParallelComputer(true, true), classes);
+        JUnitCore.runClasses(new ParallelComputer(true,true), classes);
     }
 
 	/**
