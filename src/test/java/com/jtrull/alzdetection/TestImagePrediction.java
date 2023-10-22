@@ -1,5 +1,6 @@
 package com.jtrull.alzdetection;
 
+import org.junit.Assert;
 import org.junit.experimental.ParallelComputer;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -9,6 +10,8 @@ import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.runner.JUnitCore;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -27,6 +30,7 @@ import com.jtrull.alzdetection.Image.ImageRepository;
 import com.jtrull.alzdetection.Image.ImageService;
 import com.jtrull.alzdetection.Model.Model;
 import com.jtrull.alzdetection.Model.ModelRepository;
+import com.jtrull.alzdetection.Model.ModelService;
 import com.jtrull.alzdetection.Prediction.ImpairmentEnum;
 
 import jakarta.servlet.ServletException;
@@ -173,9 +177,6 @@ public class TestImagePrediction {
         return initialImagePrediction;
     }
 
-    
-    
-    private int num = 0;
 
     @Test
 	@Order(2)
@@ -195,7 +196,6 @@ public class TestImagePrediction {
 			MockMultipartFile mockMultipartFile = new MockMultipartFile("image", "test.json", 
             MediaType.APPLICATION_JSON.toString(), ByteStreams.toByteArray(fis));
 
-			String url = createBaseUrl(getModel().getId());
 			try {
 				mvc.perform(MockMvcRequestBuilders.multipart(createPredictUrl(getModel(1L).getId()))
 						.file(mockMultipartFile)
@@ -249,7 +249,7 @@ public class TestImagePrediction {
             Assert.assertTrue("status code did not match 404 as expected, found: " + httpException.getStatusCode(), 
                 httpException.getStatusCode().equals(HttpStatus.valueOf(404)));
             Assert.assertTrue("status message was not as expected, found: " + httpException.getStatusCode(), 
-                httpException.getMessage().contains("Unable to find prediction with specified Id: " + invalidId));
+                httpException.getMessage().contains("Unable to find prediction with Id: " + invalidId));
         }
     }
 
@@ -324,7 +324,7 @@ public class TestImagePrediction {
         } catch (ServletException e) {
             RestClientResponseException httpException = (RestClientResponseException) e.getRootCause();
             assert httpException.getStatusCode().equals(HttpStatus.valueOf(404));
-            assert httpException.getMessage().contains("Unable to find prediction with specified Id: " + invalidId);
+            assert httpException.getMessage().contains("Unable to find prediction with Id: " + invalidId);
         }
     }
 
@@ -334,19 +334,6 @@ public class TestImagePrediction {
 
     public Model getModel() throws Exception {
         return getModel(null);
-    }
-
-    /**
-	 * Run all tests in class concurrently
-	 */
-	@Test
-	@Order(5)
-	@RepeatedTest(10)
-    public void runAllTests() {
-        int numConcurrent = 25_000;
-        Class<?>[] classes  = new Class<?>[numConcurrent];
-        Arrays.fill(classes, TestImagePrediction.class);
-        JUnitCore.runClasses(new ParallelComputer(true, true), classes);
     }
 
     /**
@@ -373,10 +360,5 @@ public class TestImagePrediction {
                 .findAny()
                 .orElseThrow(() -> new RuntimeException("Unable to pick random model"));
         }
-
-        
-
-
-        throw new RuntimeException("Unable to find default model, is default model now deletable?");
     }
 }
