@@ -46,6 +46,11 @@ public class ImageController {
         return this.imageService.runPredictionForRandomFromImpairmentCategory(impairment, modelId);
     }
 
+    @GetMapping("")
+    public ImagePrediction runGetPrediction(@RequestParam(value="id") long predictionId, @PathVariable Long modelId) {
+        return this.imageService.runGetPrediction(predictionId, modelId);
+    }
+
     // DELETE mappings
 
     @DeleteMapping("/{predictionId}")

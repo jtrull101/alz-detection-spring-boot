@@ -172,6 +172,19 @@ public class ImageService {
         return image;
     }
 
+     public ImagePrediction runGetPrediction(long predictionId, Long modelId) {
+        Optional<ImagePrediction> image = imageRepository.findById(predictionId);
+        if (image.isEmpty()) { 
+            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find prediction with specified Id: " + predictionId);
+        }
+
+        if (image.get().getAssociatedModel() != modelId) {
+            throw new HttpClientErrorException (HttpStatusCode.valueOf(400), "Error with request, unable to find prediction for modelId " + modelId);
+        }
+
+        return image.get();
+    }
+
     /**
      * Delete a prediction present in the Image database. Useful if a user desired to remove their potentially sensitive data from the server.
      * 
@@ -415,4 +428,6 @@ public class ImageService {
             }
         }
     }
+
+   
 }
