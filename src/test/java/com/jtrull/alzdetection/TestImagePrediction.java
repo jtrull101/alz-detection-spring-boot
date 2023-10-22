@@ -27,6 +27,7 @@ import com.jtrull.alzdetection.Image.ImageRepository;
 import com.jtrull.alzdetection.Image.ImageService;
 import com.jtrull.alzdetection.Model.Model;
 import com.jtrull.alzdetection.Model.ModelRepository;
+import com.jtrull.alzdetection.Model.ModelService;
 import com.jtrull.alzdetection.Prediction.ImpairmentEnum;
 
 import jakarta.servlet.ServletException;
@@ -56,14 +57,12 @@ public class TestImagePrediction {
 
 	@Autowired
 	private ImageRepository imageRepository;
-
     @Autowired
     private ImageService imageService;
-
     @Autowired
     private ModelRepository modelRepository;
-
-    Model model = null;
+    @Autowired
+    private ModelService modelService;
 
     private static final String BASE_URL = "/api/v1/model";
 
@@ -190,9 +189,8 @@ public class TestImagePrediction {
 			MockMultipartFile mockMultipartFile = new MockMultipartFile("image", "test.json", 
             MediaType.APPLICATION_JSON.toString(), ByteStreams.toByteArray(fis));
 
-			String url = createBaseUrl(getModel().getId());
 			try {
-				mvc.perform(MockMvcRequestBuilders.multipart(url)
+				mvc.perform(MockMvcRequestBuilders.multipart(createBaseUrl(getModel().getId()))
 						.file(mockMultipartFile)
 						.contentType(MediaType.APPLICATION_JSON.toString()))
 						.andExpect(status().is4xxClientError());
@@ -262,14 +260,25 @@ public class TestImagePrediction {
      * Get a model from the model repository. If unable to find a model in the repository, reload the default model.
      * 
      * @return
+     * @throws Exception
      */
-    public Model getModel() {
-        if (model != null) return model;
+    public Model getModel() throws Exception {
         List<Model> allModels = modelRepository.findAll();
-        if (allModels.size() > 0) {
-            model = allModels.get(0);
-            return model;
+
+        // load 10 models into the model repository
+        long modelNum = 0L;
+        for (int i=allModels.size(); i<=10; i++) {
+            TestModel.runLoadModelRequest(modelService, modelNum++, getClass(), mvc);
         }
-        throw new RuntimeException("Unable to find default model, is default model now deletable?");
+        allModels = modelRepository.findAll();
+
+        // pick a random model
+        Optional<Model> randomModelOpt = allModels.stream()
+            .skip(new Random().nextInt(allModels.size()))
+            .findAny();
+
+        if (randomModelOpt.isPresent()) return randomModelOpt.get();
+
+        throw new RuntimeException("Unable to find model");
     }
 }

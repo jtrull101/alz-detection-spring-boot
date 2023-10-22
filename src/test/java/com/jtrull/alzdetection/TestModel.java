@@ -67,7 +67,7 @@ public class TestModel {
 	@Order(1)
 	@RepeatedTest(10)
 	public void testLoadModel() throws Exception {
-		Pair<String, Model> pair = runLoadModelRequest();
+		Pair<String, Model> pair = runLoadModelRequest(modelService, modelNum, getClass(), mvc);
 		String modelName = pair.getValue0();
 		Model model = pair.getValue1();
 		assert model != null;
@@ -75,19 +75,24 @@ public class TestModel {
 		
 	}
 
+	public static String getModelPath(ModelService modelService) throws Exception {
+		return findSavedModel(modelService).getAbsolutePath();
+	}
+
 	/**
 	 * Load a model into the API using the /model/load endpoint.
+	 * @param <T>
 	 * 
 	 * @return
 	 * @throws Exception
 	 */
-	public Pair<String, Model> runLoadModelRequest() throws Exception {
-		String path = findSavedModel().getAbsolutePath();
+	public static <T> Pair<String, Model> runLoadModelRequest(ModelService modelService, long modelNum, Class<T> clazz, MockMvc mvc) throws Exception {
+		String path = getModelPath(modelService);
         String filename = path.substring(path.lastIndexOf("/")+1);
 		String modelName = modelNum + "-" + filename;
 		FileInputStream fis = new FileInputStream(path);
 
-		try (InputStream is = getClass().getResourceAsStream(path)) {
+		try (InputStream is = clazz.getResourceAsStream(path)) {
 			MockMultipartFile mockMultipartFile = new MockMultipartFile("file", modelNum + "-" + filename, "application/zip", ByteStreams.toByteArray(fis));
 
 			String url = BASE_URL + "/load";
@@ -113,7 +118,7 @@ public class TestModel {
 	@Order(2)
 	@RepeatedTest(10)
 	public void testLoadInvalidModel() throws Exception {
-		String path = findSavedModel().getAbsolutePath();
+		String path = findSavedModel(modelService).getAbsolutePath();
         String filename = path.substring(path.lastIndexOf("/")+1);
 
 		try (InputStream is = getClass().getResourceAsStream(path)) {
@@ -377,7 +382,7 @@ public class TestModel {
 	 * @return
 	 * @throws Exception
 	 */
-	private File findSavedModel() throws Exception {
+	private static File findSavedModel(ModelService modelService) throws Exception {
 		Optional<File> savedModel = modelService.getSavedModelInResourcesDir(ModelService.DEFAULT_MODEL_NAME);
 		if (savedModel.isEmpty()) {
 			throw new Exception("Unable to find saved model");
