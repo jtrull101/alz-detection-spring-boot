@@ -204,7 +204,7 @@ public class TestImagePrediction {
             MediaType.APPLICATION_JSON.toString(), ByteStreams.toByteArray(new FileInputStream(filepath)));
 
 			try {
-				mvc.perform(MockMvcRequestBuilders.multipart(createBaseUrl(getModel(1L).getId()))
+				mvc.perform(MockMvcRequestBuilders.multipart(createBaseUrl(getModel().getId()))
 						.file(mockMultipartFile)
 						.contentType(MediaType.APPLICATION_JSON.toString()))
 						.andExpect(status().is4xxClientError());
@@ -235,9 +235,7 @@ public class TestImagePrediction {
         JUnitCore.runClasses(new ParallelComputer(true, true), classes);
     }
 
-    public Model getModel() throws Exception {
-        return getModel(null);
-    }
+  
 
     @Test
     @Order(5)
@@ -280,33 +278,32 @@ public class TestImagePrediction {
         }
     }
 
+    public Model getModel() throws Exception {
+        return getModel(null);
+    }
     /**
      * Get a model from the model repository. If unable to find a model in the repository, reload the default model.
      * 
      * @return
      * @throws Exception
      */
-    public Model getModel(Long desiredId) throws Exception {
-        synchronized (modelRepository) {
-            // List<Model> allModels = modelRepository.findAll();
-            // logger.info("found " + allModels.size() + " models in repo");
-            // // load models into the model repository
-            // for (int i = allModels.size(); i<=10; i++) {
-            //     TestModel.runLoadModelRequest(modelService, getClass(), mvc);
-            // }
-            // allModels = modelRepository.findAll();
-            // logger.info("after push, found " + allModels.size() + " models in repo");
+    public Model getModel(Long id) throws Exception {
+        List<Model> allModels = modelRepository.findAll();
 
-            // if (desiredId != null) {
-            //     return allModels.stream().filter(m -> m.getId() == desiredId).findFirst().get();
-            // }
-
-            // // pick a random model
-            // return allModels.stream()
-            //     .skip(new Random().nextInt(allModels.size()/5))
-            //     .findAny()
-            //     .orElseThrow(() -> new RuntimeException("Unable to pick random model"));
-            return modelRepository.findAll().stream().findFirst().get();
+        // load 10 models into the model repository
+        long modelNum = 0L;
+        for (int i=allModels.size(); i<=10; i++) {
+            TestModel.runLoadModelRequest(modelService, modelNum++, getClass(), mvc);
         }
+        allModels = modelRepository.findAll();
+
+        // pick a random model
+        Optional<Model> randomModelOpt = allModels.stream()
+            .skip(new Random().nextInt(allModels.size()))
+            .findAny();
+
+        if (randomModelOpt.isPresent()) return randomModelOpt.get();
+
+        throw new RuntimeException("Unable to find model");
     }
 }
