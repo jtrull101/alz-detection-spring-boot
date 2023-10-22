@@ -10,6 +10,8 @@ import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.Map.Entry;
 
 import org.apache.commons.io.FilenameUtils;
 import org.slf4j.Logger;
@@ -212,13 +214,15 @@ public class ModelService {
     public boolean deleteAllModels() {
         try {
             synchronized (inMemoryModels) {
-                inMemoryModels.entrySet().stream()
+                Set<Entry<Long, Criteria<Image, Classifications>>> entries = inMemoryModels.entrySet();
+                entries.stream()
                     .filter(e -> e != null).filter(e -> e.getKey() != null)
                     .filter(e -> e.getKey() != 1)
                     .forEach(e -> inMemoryModels.remove(e.getKey()));
             }
             synchronized (modelRepository) {
-                modelRepository.findAll().stream()
+                List<Model> models = modelRepository.findAll();
+                models.stream()
                     .filter(m -> m.getId() != 1)
                     .forEach(m -> modelRepository.delete(m));
             }

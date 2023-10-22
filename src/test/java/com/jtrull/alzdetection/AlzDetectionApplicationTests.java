@@ -20,6 +20,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @TestMethodOrder(OrderAnnotation.class)
 class AlzDetectionApplicationTests {
 
+    public static final int TEST_INVOCATIONS = 10;
+
     @Autowired
 	private MockMvc mvc;
 

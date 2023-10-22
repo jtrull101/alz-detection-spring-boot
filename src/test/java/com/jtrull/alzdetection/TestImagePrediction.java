@@ -270,6 +270,10 @@ public class TestImagePrediction {
             model = allModels.get(0);
             return model;
         }
+
+        
+
+
         throw new RuntimeException("Unable to find default model, is default model now deletable?");
     }
 }
