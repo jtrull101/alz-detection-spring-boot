@@ -10,7 +10,8 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -19,23 +20,18 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @TestMethodOrder(OrderAnnotation.class)
 class AlzDetectionApplicationTests {
+    @Autowired private MockMvc mvc;
 
-    public static final int TEST_INVOCATIONS = 10;
+    public static final int TEST_INVOCATIONS = 50;
+    public static final ObjectMapper MAPPPER = new ObjectMapper();
 
-    @Autowired
-	private MockMvc mvc;
 
     @Test
 	@Order(1)
-    @RepeatedTest(10)
+    @RepeatedTest(TEST_INVOCATIONS)
 	public void testFakeEndpoint() throws Exception {
-        MvcResult _return = mvc.perform(get("/apeeeeei/v1/")
+        mvc.perform(get("/api/v19/")
             .contentType(MediaType.APPLICATION_JSON))
-            .andExpect(status().is4xxClientError())
-            .andReturn();
-
-        String content = _return.getResponse().getContentAsString();
-        assert content != null;
+            .andExpect(status().is4xxClientError());
 	}
-
 }
