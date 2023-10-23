@@ -88,7 +88,7 @@ public class TestImagePrediction {
     @RepeatedTest(10)
 	public void testRandomPredictionFromCategory() throws Exception {
         for (ImpairmentEnum val : ImpairmentEnum.values()) {
-            MvcResult _return = mvc.perform(get(createPredictUrl(getModel(1L).getId()) + "/" + val.toString())
+            MvcResult _return = mvc.perform(get(createPredictUrl(getModel(1L).getId()) + "/random/" + val.toString())
 				.contentType(MediaType.APPLICATION_JSON))
 				.andExpect(status().is2xxSuccessful())
                 .andReturn();
@@ -103,7 +103,7 @@ public class TestImagePrediction {
         String impairment = RandomStringUtils.random(5, true, true);
 
         try {
-            mvc.perform(get(createPredictUrl(getModel(1L).getId()) + "/" + impairment)
+            mvc.perform(get(createPredictUrl(getModel(1L).getId()) + "/random/" + impairment)
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().is4xxClientError());
             fail("succeeded sending invalid impairment category when expected to fail");
