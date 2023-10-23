@@ -1,0 +1,19 @@
+<div>
+  <router-outlet></router-outlet>
+</div>
+
+<h2>{{ title }}</h2>
+<div class="container">
+  <div class="row mt-5">
+    <div class="col-md-4">
+      <br class="mb-3">
+      ID: {{ prediction.id }}<br>
+      Actual Impairment Level: {{ prediction.actualValue }}<br>
+      <br><br>
+      Confidence of No Impairment: {{ prediction.conf_NoImpairment }}%<br>
+      Confidence of Very Mild Impairment: {{ prediction.conf_VeryMildImpairment }}%<br>
+      Confidence of Mild Impairment: {{ prediction.conf_MildImpairment }}%<br>
+      Confidence of Moderate Impairment: {{ prediction.conf_ModerateImpairment }}%<br>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,25 @@
+<div>
+  <router-outlet></router-outlet>
+</div>
+
+<h2>{{ title }}</h2>
+
+<div class="container">
+  <div class="row mt-5">
+    <div class="col-md-4">
+      <div class="mb-3">
+        <label for="formFile" class="form-label">Upload an MRI image to run through the Convolutional Neural Network for evaluation</label>
+        <input (change)="this.onFilechange($event)" class="form-control" type="file" id="formFile">
+        <button (click)="this.runPredicitonOnFile()" type="button" class="btn btn-primary mt-3">Upload</button>
+      </div>
+      <div ng-if="prediction == null">
+        ID: {{ prediction.id }}<br>
+        <br><br>
+        Confidence of No Impairment: {{ prediction.conf_NoImpairment }}%<br>
+        Confidence of Very Mild Impairment: {{ prediction.conf_VeryMildImpairment }}%<br>
+        Confidence of Mild Impairment: {{ prediction.conf_MildImpairment }}%<br>
+        Confidence of Moderate Impairment: {{ prediction.conf_ModerateImpairment }}%<br>
+      </div>
+    </div>
+  </div>
+ </div>

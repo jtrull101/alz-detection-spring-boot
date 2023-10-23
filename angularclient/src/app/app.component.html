@@ -1,56 +1,12 @@
-<div class="container">
-  <div class="row">
-    <div class="col-md-12">
-      <div class="card bg-dark my-5">
-        <div class="card-body">
-          <h2 class="card-title text-center text-white py-3">{{ title }}</h2>
+<header>
+</header>
 
-          <ul class="text-center list-inline py-3">
-            <li class="list-inline-item">
-              <a routerLink="/users" class="btn btn-info">Submit Image for Prediction</a>
-                </li>
-            <li class="list-inline-item">
-              <a routerLink="/adduser" class="btn btn-info">Submit Random Image for Prediction</a>
-                </li>
-          </ul>
-
-          <ul class="text-center list-inline py-3">
-            <li class="list-inline-item">
-              <a routerLink="/users" class="btn btn-info">Submit Random 'No Impairment' Image for Testing Prediction</a>
-                </li>
-            <li class="list-inline-item">
-              <a routerLink="/users" class="btn btn-info">Submit Random 'Very Mild Impairment' Image for Testing Prediction</a>
-                </li>
-            <li class="list-inline-item">
-              <a routerLink="/users" class="btn btn-info">Submit Random 'Mild Impairment' Image for Testing Prediction</a>
-                </li>
-            <li class="list-inline-item">
-              <a routerLink="/users" class="btn btn-info">Submit Random 'Moderate Impairment' Image for Testing Prediction</a>
-                </li>
-          </ul>
-
-          <ul class="text-center list-inline py-3">
-            <li class="list-inline-item">
-              <a routerLink="/users" class="btn btn-info">Add Saved Neural Network Model</a>
-                </li>
-            <li class="list-inline-item">
-              <a routerLink="/users" class="btn btn-info">Get All Neural Network Models</a>
-                </li>
-            <li class="list-inline-item">
-              <a routerLink="/users" class="btn btn-info">Get Neural Network Model of ID</a>
-                </li>
-            <li class="list-inline-item">
-              <a routerLink="/users" class="btn btn-info">Delete Neural Network Model of ID</a>
-                </li>
-            <li class="list-inline-item">
-              <a routerLink="/users" class="btn btn-info">Delete all Neural Network Models</a>
-                </li>
-          </ul>
-
-
-        </div>
-      </div>
-      <router-outlet></router-outlet>
-    </div>
+<main>
+  <!-- Your pages are rendered here -->
+  <div class="container mt-3">
+    <router-outlet></router-outlet>
   </div>
-</div>
+</main>
+
+<footer>
+</footer>

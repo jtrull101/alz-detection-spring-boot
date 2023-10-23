@@ -1,0 +1,17 @@
+<div>
+  <router-outlet></router-outlet>
+</div>
+
+<h2>{{ title }}</h2>
+
+<div class="container">
+  <div class="row mt-5">
+    <div class="col-md-4">
+      <div class="mb-3">
+        <label for="formFile" class="form-label">Note that only .zips of valid Tensorflow models will work</label>
+        <input (change)="this.onFilechange($event)" class="form-control" type="file" id="formFile">
+        <button (click)="this.upload()" type="button" class="btn btn-primary mt-3">Upload</button>
+      </div>
+    </div>
+  </div>
+ </div>
