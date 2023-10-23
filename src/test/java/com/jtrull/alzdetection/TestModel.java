@@ -64,6 +64,7 @@ public class TestModel {
 	private static final String LOAD_URL = BASE_URL + "/load";
 	private static final String DELETE_URL = BASE_URL +"/delete";
 	private static final String DELETE_ALL_URL = DELETE_URL +"/all";
+	private static final String ID_KEY = "?id=";
 
 	private static final int TEST_INVOCATIONS = AlzDetectionApplicationTests.TEST_INVOCATIONS;
 	private static final ObjectMapper MAPPER = AlzDetectionApplicationTests.MAPPPER;
@@ -224,7 +225,7 @@ public class TestModel {
 			modelId = inputModel.getId();
 		}
 
-		MvcResult response = mvc.perform(get(BASE_URL + "/" + modelId)
+		MvcResult response = mvc.perform(get(BASE_URL + ID_KEY + modelId)
 				.contentType(MediaType.APPLICATION_JSON))
 				.andExpect(status().isOk())
 				.andReturn();
@@ -244,7 +245,7 @@ public class TestModel {
 	public void testGetModelInvalidId() throws Exception {
 		long invalidId = 2345234523452345L;
 		try {
-			mvc.perform(get(BASE_URL + "/" + invalidId)
+			mvc.perform(get(BASE_URL + ID_KEY + invalidId)
 				.contentType(MediaType.APPLICATION_JSON))
 				.andExpect(status().is4xxClientError());
 			fail("succeeded sending invalid modelId");
@@ -279,7 +280,7 @@ public class TestModel {
 		// Iterate through each model and get it individually to ensure individual 
 		//		getting for each model returns the same as getAll()
 		for (Model m : models) {
-			MvcResult response = mvc.perform(get(BASE_URL + "/" + m.getId())
+			MvcResult response = mvc.perform(get(BASE_URL + ID_KEY + m.getId())
 				.contentType(MediaType.APPLICATION_JSON))
 				.andExpect(status().isOk())
 				.andReturn();
@@ -301,7 +302,7 @@ public class TestModel {
 	public void testInvalidModelDelete() throws Exception {
 		long invalidId = 4892374923L;
 		try {
-			mvc.perform(delete(DELETE_URL + "/" + invalidId)
+			mvc.perform(delete(DELETE_URL + ID_KEY + invalidId)
 				.contentType(MediaType.APPLICATION_JSON))
 				.andExpect(status().is4xxClientError());
 			fail("succeeded sending invalid model delete when expected to fail");
@@ -323,7 +324,7 @@ public class TestModel {
 	@RepeatedTest(TEST_INVOCATIONS)
 	public void testDeleteDefaultModel() throws Exception {
 		try {
-			mvc.perform(delete(DELETE_URL + "/1")
+			mvc.perform(delete(DELETE_URL + ID_KEY + "1")
 				.contentType(MediaType.APPLICATION_JSON))
 				.andExpect(status().is4xxClientError());
 			fail("succeeded deleting default model when expected to fail");
@@ -353,7 +354,7 @@ public class TestModel {
 			throw new Exception("unable to run delete if no non-default model exists yet");
 		}
 
-		MvcResult result = mvc.perform(delete(DELETE_URL + "/" + model.get().getId())
+		MvcResult result = mvc.perform(delete(DELETE_URL + ID_KEY + model.get().getId())
 				.contentType(MediaType.APPLICATION_JSON))
 				.andExpect(status().isOk())
 				.andReturn();

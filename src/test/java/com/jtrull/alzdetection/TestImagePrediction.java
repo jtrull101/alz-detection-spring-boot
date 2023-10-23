@@ -23,6 +23,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.web.client.RestClientResponseException;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.io.ByteStreams;
 import com.jtrull.alzdetection.Image.ImagePrediction;
@@ -43,6 +44,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
@@ -78,12 +80,7 @@ public class TestImagePrediction {
             .contentType(MediaType.APPLICATION_JSON))
             .andExpect(status().is2xxSuccessful())
             .andReturn();
-        String content = _return.getResponse().getContentAsString();
-
-        // Assert this string is valid prediction class
-        assert content != null;
-        ImagePrediction prediction = MAPPER.readValue(content, ImagePrediction.class);
-        assert prediction != null;
+        validatePrediction(_return);
 	}
 
     @Test
@@ -95,12 +92,7 @@ public class TestImagePrediction {
 				.contentType(MediaType.APPLICATION_JSON))
 				.andExpect(status().is2xxSuccessful())
                 .andReturn();
-            String content = _return.getResponse().getContentAsString();
-
-            // Assert this string is valid prediction class
-            assert content != null;
-            ImagePrediction prediction = MAPPER.readValue(content, ImagePrediction.class);
-            assert prediction != null;
+            validatePrediction(_return);
         }
 	}
 
@@ -117,9 +109,11 @@ public class TestImagePrediction {
             fail("succeeded sending invalid impairment category when expected to fail");
 
         } catch (ServletException e) {
-            RestClientResponseException httpException = (RestClientResponseException) e.getRootCause();
-            assert httpException.getStatusCode().equals(HttpStatus.valueOf(400));
-            assert httpException.getMessage().contains( "Unable to parse category: " + impairment + ". Expected values=[" + Arrays.asList(ImpairmentEnum.asStrings().toArray()) + "]");
+            RestClientResponseException httpException = (RestClientResponseException) e.getRootCause();       
+            Assert.assertTrue("status code did not match 400 as expected, found: " + httpException.getStatusCode(), 
+                httpException.getStatusCode().equals(HttpStatus.valueOf(400)));
+            Assert.assertTrue("status message was not as expected, found: " + httpException.getStatusCode(), 
+                httpException.getMessage().contains("Unable to parse category: " + impairment + ". Expected values=[" + Arrays.asList(ImpairmentEnum.asStrings().toArray()) + "]"));
         }
 	}
 
@@ -142,17 +136,16 @@ public class TestImagePrediction {
                     .contentType(mediaType))
                 .andExpect(status().isOk())
                 .andReturn();
+        validatePrediction(_return);
 
         String content = _return.getResponse().getContentAsString();
-        assert content != null;
         ImagePrediction prediction = MAPPER.readValue(content, ImagePrediction.class);
-        assert prediction != null;
 
         // Assert if a picture is passed in that we have the known predictions for, the predictions will match
-        assert prediction.getConf_NoImpairment().equals(initialImagePrediction.getConf_NoImpairment());
-        assert prediction.getConf_VeryMildImpairment().equals(initialImagePrediction.getConf_VeryMildImpairment());
-        assert prediction.getConf_MildImpairment().equals(initialImagePrediction.getConf_MildImpairment());
-        assert prediction.getConf_ModerateImpairment().equals(initialImagePrediction.getConf_ModerateImpairment());
+        Assert.assertEquals("Found not matching impairment level",prediction.getConf_NoImpairment(),initialImagePrediction.getConf_NoImpairment());
+        Assert.assertEquals("Found not matching impairment level",prediction.getConf_VeryMildImpairment(),initialImagePrediction.getConf_VeryMildImpairment());
+        Assert.assertEquals("Found not matching impairment level",prediction.getConf_MildImpairment(),initialImagePrediction.getConf_MildImpairment());
+        Assert.assertEquals("Found not matching impairment level",prediction.getConf_ModerateImpairment(),initialImagePrediction.getConf_ModerateImpairment());
 	}
 
     /**
@@ -205,8 +198,10 @@ public class TestImagePrediction {
 
 			} catch (ServletException e) {
 				RestClientResponseException httpException = (RestClientResponseException) e.getRootCause();
-                assert httpException.getStatusCode().equals(HttpStatus.valueOf(400));
-				assert httpException.getMessage().contains("is it a valid image?");
+                Assert.assertTrue("status code did not match 400 as expected, found: " + httpException.getStatusCode(), 
+                    httpException.getStatusCode().equals(HttpStatus.valueOf(400)));
+                Assert.assertTrue("status message was not as expected, found: " + httpException.getStatusCode(), 
+                    httpException.getMessage().contains("is it a valid image?"));
 			}
 		}
     }
@@ -299,15 +294,14 @@ public class TestImagePrediction {
         }
         ImagePrediction initialImagePrediction = imageOpt.get();
 
-        MvcResult _return = mvc.perform(delete(createPredictUrl(getModel(initialImagePrediction.getAssociatedModel()).getId()) + "/" + initialImagePrediction.getId())
+        MvcResult _return = mvc.perform(delete(createPredictUrl(
+                getModel(initialImagePrediction.getAssociatedModel()).getId()) + "/delete" + ID_KEY + initialImagePrediction.getId())
             .contentType(MediaType.APPLICATION_JSON))
             .andExpect(status().is2xxSuccessful())
             .andReturn();
         String content = _return.getResponse().getContentAsString();
-
-        // Assert this string is valid prediction class
-        assert content != null;
-        assert Boolean.valueOf(content);
+        Assert.assertNotNull("Unable to validate return of delete request, expected boolean", content);
+        Assert.assertTrue("Result of delete request did not match expected true", Boolean.valueOf(content));
     }
 
     @Test
@@ -316,15 +310,17 @@ public class TestImagePrediction {
     public void testInvalidDeletePrediction() throws Exception {
         long invalidId = 2345234523452345L;
         try {
-            mvc.perform(delete(createPredictUrl(getModel().getId()) + "/" + invalidId)
+            mvc.perform(delete(createPredictUrl(getModel().getId()) + "/delete" + ID_KEY + invalidId)
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().is4xxClientError());
             fail("succeeded deleting invalid image when expected to fail");
 
         } catch (ServletException e) {
             RestClientResponseException httpException = (RestClientResponseException) e.getRootCause();
-            assert httpException.getStatusCode().equals(HttpStatus.valueOf(404));
-            assert httpException.getMessage().contains("Unable to find prediction with Id: " + invalidId);
+            Assert.assertTrue("status code did not match 404 as expected, found: " + httpException.getStatusCode(), 
+                httpException.getStatusCode().equals(HttpStatus.valueOf(404)));
+            Assert.assertTrue("status message was not as expected, found: " + httpException.getStatusCode(), 
+                httpException.getMessage().contains("Unable to find prediction with Id: " + invalidId));
         }
     }
 
@@ -361,4 +357,15 @@ public class TestImagePrediction {
                 .orElseThrow(() -> new RuntimeException("Unable to pick random model"));
         }
     }
+
+    public void validatePrediction(MvcResult _return) throws UnsupportedEncodingException {
+        String content = _return.getResponse().getContentAsString();
+        Assert.assertNotNull("Unable to find ImagePrediction object after random prediction request", content);
+        ImagePrediction prediction = null;
+        try {
+            prediction = MAPPER.readValue(content, ImagePrediction.class);
+        } catch (JsonProcessingException e) { Assert.fail("Return from image prediction unable to parse to ImagePrediction object!"); }
+		Assert.assertNotNull("Failed during marshalling of ImagePrediction object after request", prediction);
+    }
 }
+

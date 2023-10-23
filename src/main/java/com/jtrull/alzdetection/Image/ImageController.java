@@ -53,8 +53,8 @@ public class ImageController {
 
     // DELETE mappings
 
-    @DeleteMapping("/{predictionId}")
-    public boolean runDeletePrediction(@PathVariable long predictionId, @PathVariable Long modelId) {
+    @DeleteMapping("/delete")
+    public boolean runDeletePrediction(@RequestParam(value="id") long predictionId, @PathVariable Long modelId) {
         return this.imageService.runDeletePrediction(predictionId, modelId);
     }
 }

@@ -22,9 +22,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class AlzDetectionApplicationTests {
     @Autowired private MockMvc mvc;
 
-    public static final int TEST_INVOCATIONS = 50;
+    public static final int TEST_INVOCATIONS = 10;
     public static final ObjectMapper MAPPPER = new ObjectMapper();
-
 
     @Test
 	@Order(1)

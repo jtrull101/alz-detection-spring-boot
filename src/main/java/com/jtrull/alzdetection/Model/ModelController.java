@@ -7,7 +7,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -30,14 +29,13 @@ public class ModelController {
 
     @PostMapping("/load")
     public Model loadModelFromFile(@RequestParam("file") MultipartFile file) throws Exception {
-        logger.debug("entered loadModelFromFile for multipartfile: " + file);
         return this.modelService.loadModelFromFile(file);
     }
 
     // GET mappings
 
-    @GetMapping("/{modelId}")
-    public Model getModelById(@PathVariable Long modelId) {
+    @GetMapping("")
+    public Model getModelById(@RequestParam(value="id") Long modelId) {
         return this.modelService.getModelById(modelId);
     }
 
@@ -48,8 +46,8 @@ public class ModelController {
 
     // DELETE mappings
 
-    @DeleteMapping("/delete/{modelId}")
-    public boolean deleteModelById(@PathVariable Long modelId) {
+    @DeleteMapping("/delete")
+    public boolean deleteModelById(@RequestParam(value="id") Long modelId) {
         return this.modelService.deleteModelById(modelId);
     }
 
