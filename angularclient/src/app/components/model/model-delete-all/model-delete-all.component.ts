@@ -8,20 +8,17 @@ import { ModelService } from 'src/app/services/model.service';
   styleUrls: ['./model-delete-all.component.css']
 })
 export class ModelDeleteAllComponent {
-  title = 'Result of Deleting All Models:'
+  title = 'Delete All Models'
   response:boolean | undefined;
 
   constructor(private service:ModelService){
-  }
-
-  ngOnInit() {
-    this.deleteAllModels();
   }
 
   deleteAllModels() {
     this.service.deleteAll().subscribe(
       (response: boolean) => {
         this.response = response;
+        this.service.setModelId(1);
       },
       (error:HttpErrorResponse) => {
         this.response = false;

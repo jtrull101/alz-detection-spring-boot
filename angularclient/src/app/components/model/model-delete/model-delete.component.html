@@ -4,10 +4,15 @@
 
 <div class="container">
   <div class="row mt-5">
-    <div class="col-md-4">
-      <br class="mb-3">
-      response: {{ response }}<br>
-    </div>
+    <div>
+        <!--gray out if id == 1-->
+        <button (click)="this.deleteModel()" type="button" class="btn btn-primary mt-3">Confirm Delete ID {{ id }}</button>
+      </div>
+  </div>
+  <div *ngIf="response">
+    <br><br>
+    Response: {{ response }}
   </div>
 </div>
+
 

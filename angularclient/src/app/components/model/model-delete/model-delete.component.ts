@@ -10,7 +10,7 @@ import { ModelService } from 'src/app/services/model.service';
   styleUrls: ['./model-delete.component.css']
 })
 export class ModelDeleteComponent {
-  title = "Confirmation if Delete of Model Was Successful";
+  title = "Delete Single Model";
   id: any | undefined;
   response:boolean | undefined;
 
@@ -23,9 +23,6 @@ export class ModelDeleteComponent {
       if (this.id == undefined) {
         this.id = this.service.getModelId();
       }
-      this.deleteModel();
-      // reset model to 1 after delete
-      this.service.setModelId(1);
     });
   }
 
@@ -33,8 +30,9 @@ export class ModelDeleteComponent {
     this.service.delete(this.id).subscribe(
       (response: boolean) => {
         this.response = response;
+        this.service.setModelId(1);
       },
-      (error:HttpErrorResponse) => {
+      (error:any) => {
         this.response = false;
         console.log(error.error)
       }

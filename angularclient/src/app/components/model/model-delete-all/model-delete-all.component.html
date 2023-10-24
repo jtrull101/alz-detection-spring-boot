@@ -1,12 +1,18 @@
+
 <br>
 <h2>{{ title }}</h2>
 
 <div class="container">
   <div class="row mt-5">
-    <div class="col-md-4">
-      <br class="mb-3">
-      response: {{ response }}<br>
-    </div>
+    <div>
+        <!--gray out if id == 1-->
+        <button (click)="this.deleteAllModels()" type="button" class="btn btn-primary mt-3">Delete All Models</button>
+      </div>
+  </div>
+  <div *ngIf="response">
+    <br><br>
+    Response: {{ response }}
   </div>
 </div>
+
 
