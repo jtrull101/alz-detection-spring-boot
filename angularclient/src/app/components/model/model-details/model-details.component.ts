@@ -7,35 +7,35 @@ import { ModelService } from 'src/app/services/model.service';
 @Component({
   selector: 'app-model-details',
   templateUrl: './model-details.component.html',
-  styleUrls: ['./model-details.component.css']
+  styleUrls: ['./model-details.component.css'],
 })
 export class ModelDetailsComponent {
-  title = 'Details for saved Tensorflow model:'
+  title = 'Details for saved Tensorflow model:';
   model: Model;
   id: any | undefined;
 
-  constructor(private service:ModelService, private route:ActivatedRoute){
+  constructor(private service: ModelService, private route: ActivatedRoute) {
     this.model = {
-      id: null,
-      name: ''
-    }
+      id: undefined,
+      name: '',
+    };
   }
 
   ngOnInit() {
-    this.route.queryParams.subscribe(params => {
+    this.route.queryParams.subscribe((params) => {
       this.id = params['id'];
-      this.getModelDetails();
     });
+    this.id = this.service.getModelId();
+    this.getModelDetails();
   }
 
   getModelDetails() {
-    if (this.model.id != null && this.model.name != '') return;
-
+    if (this.model.id != undefined) return;
     this.service.get(this.id).subscribe(
       (response: Model) => {
         this.model = response;
       },
-      (error:HttpErrorResponse) => {
+      (error: HttpErrorResponse) => {
         alert(error.message);
       }
     );

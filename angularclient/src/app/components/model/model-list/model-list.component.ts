@@ -11,10 +11,12 @@ import { ModelService } from 'src/app/services/model.service';
 export class ModelListComponent implements OnInit {
   title = "All Available Model IDs";
   public models: Model[] | undefined;
+  public currentId: number|undefined = undefined;
 
   constructor(private service: ModelService) {}
 
   ngOnInit(): void {
+    this.currentId = this.service.getModelId();
     this.getModels();
   }
 
@@ -27,5 +29,10 @@ export class ModelListComponent implements OnInit {
         alert(error.message);
       }
     )
+  }
+
+  public onClick(m:Model): void {
+    this.currentId = m.id;
+    this.service.setModelId(m.id);
   }
 }

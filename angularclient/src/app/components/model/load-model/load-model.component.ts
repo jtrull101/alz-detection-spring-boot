@@ -1,5 +1,5 @@
 
-import { HttpErrorResponse } from '@angular/common/http';
+import { HttpErrorResponse, HttpClient, HttpEventType } from '@angular/common/http';
 import { Component } from '@angular/core';
 import { Model } from 'src/app/models/model.model';
 import { ModelService } from 'src/app/services/model.service';
@@ -10,12 +10,11 @@ import { ModelService } from 'src/app/services/model.service';
   styleUrls: ['./load-model.component.css']
 })
 export class LoadModelComponent {
-  fileName = '';
-  file: File | undefined;
   title = 'Load archived Tensorflow model'
+  file: File | undefined;
   model: Model | undefined;
 
-  constructor(private service: ModelService){}
+  constructor(private service: ModelService, private http:HttpClient){}
 
   onFilechange(event:any) {
     this.file = event.target.files[0];
@@ -23,16 +22,11 @@ export class LoadModelComponent {
 
   upload() {
     if (this.file) {
-      this.fileName = this.file.name;
       const formData = new FormData();
       formData.append("file", this.file);
       this.service.load(formData).subscribe(
-        (response: Model) => {
-          this.model = response;
-        },
-        (error:HttpErrorResponse) => {
-          alert(error.message);
-        }
+        response => this.model = <Model>response,
+        err => alert('failure during file upload! ' + err)
       );
     }
   }

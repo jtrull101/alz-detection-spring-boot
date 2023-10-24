@@ -15,11 +15,15 @@ import { ImagePredictRandomComponent } from './components/images/image-predict-r
 import { ImagePredictRandomCategoryComponent } from './components/images/image-predict-random-category/image-predict-random-category.component';
 import { ImagePredictDeleteComponent } from './components/images/image-predict-delete/image-predict-delete.component';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
-import { MenuBodyComponent } from './components/menu-body/menu-body.component';
+import { MenuBodyComponent } from './components/page components/menu-body/menu-body.component';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatButtonModule } from '@angular/material/button';
 import { ModelService } from './services/model.service';
 import { ImagePredictionService } from './services/image-prediction.service';
+import { PageBodyComponent } from './components/page components/page-body/page-body.component';
+import { ModelIdPromptComponent } from './components/page components/model-id-prompt/model-id-prompt.component';
+import { ImageIdPromptComponent } from './components/page components/image-id-prompt/image-id-prompt.component';
+import { HomeComponent } from './components/home/home.component';
 
 
 @NgModule({
@@ -34,7 +38,11 @@ import { ImagePredictionService } from './services/image-prediction.service';
     ImagePredictRandomComponent,
     ImagePredictRandomCategoryComponent,
     ImagePredictDeleteComponent,
-    MenuBodyComponent
+    MenuBodyComponent,
+    PageBodyComponent,
+    ModelIdPromptComponent,
+    ImageIdPromptComponent,
+    HomeComponent
   ],
   imports: [
     BrowserModule,
@@ -47,7 +55,7 @@ import { ImagePredictionService } from './services/image-prediction.service';
   ],
   providers: [
     ModelService,
-    ImagePredictionService
+    ImagePredictionService,
   ],
   bootstrap: [AppComponent]
 })

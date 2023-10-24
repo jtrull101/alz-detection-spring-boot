@@ -11,33 +11,22 @@ import { ImagePredictRandomComponent } from './components/images/image-predict-r
 import { ImagePredictRandomCategoryComponent } from './components/images/image-predict-random-category/image-predict-random-category.component';
 import { ImagePredictDeleteComponent } from './components/images/image-predict-delete/image-predict-delete.component';
 
-import { MenuBodyComponent } from './components/menu-body/menu-body.component';
+import { PageBodyComponent } from './components/page components/page-body/page-body.component';
+import { HomeComponent } from './components/home/home.component';
 
 const routes: Routes = [
-  // maybe redirect to 'welcolme' page instead
-  // { component: MenuBodyComponent,
-  //   path: '',
-  //   children:[
-  //     { path: 'model/load', component: LoadModelComponent },
-  //     { path: 'model?id=:id', component: ModelDetailsComponent },
-  //     { path: 'model/all', component: ModelListComponent },
-  //     { path: 'model/delete?id=:id', component: ModelDeleteComponent },
-  //     { path: 'model/delete/all', component: ModelDeleteAllComponent },
-  //     { path: 'model/:modelId/predict', component: ImagePredictComponent },
-  //     { path: 'model/:modelId/predict/random', component: ImagePredictRandomComponent },
-  //     { path: 'model/:modelId/predict/random/:impairment', component: ImagePredictRandomCategoryComponent },
-  //     { path: 'model/:modelId/predict?id=:id', component: ImagePredictDeleteComponent }
-  //   ]}
-
-    { path: 'model/load', component: LoadModelComponent },
-    { path: 'model', component: ModelDetailsComponent },
-    { path: 'model/all', component: ModelListComponent },
-    { path: 'model/delete', component: ModelDeleteComponent },
-    { path: 'model/delete/all', component: ModelDeleteAllComponent },
-    { path: 'model/:modelId/predict', component: ImagePredictComponent },
-    { path: 'model/:modelId/predict/random', component: ImagePredictRandomComponent },
-    { path: 'model/:modelId/predict/random/:impairment', component: ImagePredictRandomCategoryComponent },
-    { path: 'model/:modelId/predict/delete', component: ImagePredictDeleteComponent }
+    { path: '', component: PageBodyComponent, children: [
+      { path: '', component: HomeComponent },
+      { path: 'model', component: ModelDetailsComponent },
+      { path: 'model/load', component: LoadModelComponent },
+      { path: 'model/all', component: ModelListComponent },
+      { path: 'model/delete', component: ModelDeleteComponent },
+      { path: 'model/delete/all', component: ModelDeleteAllComponent },
+      { path: 'model/predict', component: ImagePredictComponent },
+      { path: 'model/predict/random', component: ImagePredictRandomComponent },
+      { path: 'model/predict/random/:impairment', component: ImagePredictRandomCategoryComponent },
+      { path: 'model/predict/delete', component: ImagePredictDeleteComponent }
+    ]},
 ];
 
 @NgModule({

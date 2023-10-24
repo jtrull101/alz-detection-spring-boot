@@ -9,6 +9,7 @@ const baseUrl = 'http://localhost:8080/api/v1/model';
   providedIn: 'root'
 })
 export class ModelService {
+  private modelId:number=1;
 
   constructor(private http: HttpClient) { }
 
@@ -17,6 +18,7 @@ export class ModelService {
   }
 
   get(id:any): Observable<Model> {
+    console.log(`${baseUrl}?id=${id}`)
     return this.http.get(`${baseUrl}?id=${id}`);
   }
 
@@ -25,7 +27,6 @@ export class ModelService {
   }
 
   delete(id:any): Observable<any> {
-    console.log(`sending delete to: ${baseUrl}/delete?id=${id}`)
     return this.http.delete(`${baseUrl}/delete?id=${id}`);
   }
 
@@ -33,4 +34,15 @@ export class ModelService {
     return this.http.delete(`${baseUrl}/delete/all`);
   }
 
+  /**
+   *  Note: These methods are clearly not threadsafe. If we wanted to ensure a User could select a Model for their predictions and only their predictions, we would need to
+   *    create Users in the database and store their associated Models and Predictions
+   */
+  getModelId(): number|undefined {
+    return this.modelId;
+  }
+
+  setModelId(modelId:number): void {
+    this.modelId = modelId;
+  }
 }

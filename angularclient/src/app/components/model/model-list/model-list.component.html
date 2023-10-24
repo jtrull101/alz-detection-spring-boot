@@ -1,12 +1,16 @@
-<div>
-  <router-outlet></router-outlet>
-</div>
-
 <h2>{{ title }}</h2>
-<ul>
+<div ng-hide="currentId == undefined">
+  Current Model: {{ currentId }}
+</div>
+<br>
+<br>
+
+<ul class="models">
   <li *ngFor="let model of models">
-      ID: {{ model.id }}<br>
-      Name: {{ model.name }}<br>
+      <button type="button" (click)="onClick(model)">
+        <span class="badge">{{model.id}}</span>
+        <span class="name">{{model.name}}</span>
+      </button>
       <br>
   </li>
 </ul>

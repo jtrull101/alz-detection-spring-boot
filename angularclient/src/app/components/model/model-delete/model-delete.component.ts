@@ -20,7 +20,12 @@ export class ModelDeleteComponent {
   ngOnInit() {
     this.route.queryParams.subscribe(params => {
       this.id = params['id'];
+      if (this.id == undefined) {
+        this.id = this.service.getModelId();
+      }
       this.deleteModel();
+      // reset model to 1 after delete
+      this.service.setModelId(1);
     });
   }
 

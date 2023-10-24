@@ -1,19 +1,24 @@
-<div>
-  <router-outlet></router-outlet>
-</div>
-
+<br>
 <h2>{{ title }}</h2>
+
 <div class="container">
+  <button (click)="this.predictRandom()" type="button" class="btn btn-primary mt-3">Run '{{ impairment }}'' Prediction</button>
+
   <div class="row mt-5">
-    <div class="col-md-4">
-      <br class="mb-3">
+    <br class="mb-3">
+
+    <div *ngIf="prediction">
+      <img src={{img}} />
+    </div>
+
+    <div class="col-md-4" *ngIf="prediction">
       ID: {{ prediction.id }}<br>
       Actual Impairment Level: {{ prediction.actualValue }}<br>
       <br><br>
-      Confidence of No Impairment: {{ prediction.conf_NoImpairment }}%<br>
-      Confidence of Very Mild Impairment: {{ prediction.conf_VeryMildImpairment }}%<br>
-      Confidence of Mild Impairment: {{ prediction.conf_MildImpairment }}%<br>
-      Confidence of Moderate Impairment: {{ prediction.conf_ModerateImpairment }}%<br>
+      <div *ngIf="no">Confidence of No Impairment: {{ prediction.conf_NoImpairment }}%<br></div>
+      <div *ngIf="veryMild">Confidence of Very Mild Impairment: {{ prediction.conf_VeryMildImpairment }}%<br></div>
+      <div *ngIf="mild">Confidence of Mild Impairment: {{ prediction.conf_MildImpairment }}%<br></div>
+      <div *ngIf="moderate">Confidence of Moderate Impairment: {{ prediction.conf_ModerateImpairment }}%<br></div>
     </div>
   </div>
 </div>

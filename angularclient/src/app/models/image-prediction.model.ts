@@ -5,4 +5,5 @@ export class ImagePrediction {
   conf_MildImpairment?:number;
   conf_ModerateImpairment?:number;
   actualValue?: any;
+  filepath?: any;
 }
