@@ -32,6 +32,11 @@
 <p>
   The frontend server is implemented with Angular and serves as a simplistic yet clean interface to interact with the Spring Boot server than the Rest API.
 </p>
+<img src="images/screenshot_homepage_springboot.png">
+
+<img src="images/screenshot_choosemodel_springboot.png">
+
+<img src="images/screenshot_predictionresult_springboot.png">
 
 <h2>Pending Work</h2>
 <ul>
