@@ -16,7 +16,7 @@ export class LoadModelComponent {
 
   constructor(private service: ModelService, private http:HttpClient){}
 
-  onFilechange(event:any) {
+  onFileChange(event:any) {
     this.file = event.target.files[0];
   }
 

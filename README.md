@@ -255,7 +255,7 @@
     <td>&#10005;</td>
   </tr>
   <tr>
-    <td>Run prediction for random file in Impairment category, verify confidence retrurned</td>
+    <td>Run prediction for random file in Impairment category, verify confidence returned</td>
     <td>&check;</td>
     <td>&#10005;</td>
   </tr>
@@ -265,7 +265,7 @@
     <td>&#10005;</td>
   </tr>
   <tr>
-    <td>Run prediction for random test image, verify confidence retrurned</td>
+    <td>Run prediction for random test image, verify confidence returned</td>
     <td>&check;</td>
     <td>&#10005;</td>
   </tr>

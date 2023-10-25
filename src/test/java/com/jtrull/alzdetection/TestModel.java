@@ -67,7 +67,7 @@ public class TestModel {
 	private static final String ID_KEY = "?id=";
 
 	private static final int TEST_INVOCATIONS = AlzDetectionApplicationTests.TEST_INVOCATIONS;
-	private static final ObjectMapper MAPPER = AlzDetectionApplicationTests.MAPPPER;
+	private static final ObjectMapper MAPPER = AlzDetectionApplicationTests.MAPPER;
 
     /**
      * Load model from file passed into REST request. We will assert GET/DELETE later.
@@ -255,7 +255,7 @@ public class TestModel {
 	}
 
     /**
-     * Get all models regardles of ID. Run a single get on each model returned from the getAll() and assert the 
+     * Get all models regardless of ID. Run a single get on each model returned from the getAll() and assert the 
 	 * 	resource representations are identical
 	 * 
      * @throws Exception

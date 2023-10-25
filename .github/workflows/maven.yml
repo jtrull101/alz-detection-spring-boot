@@ -7,20 +7,15 @@
 # documentation.
 
 name: Java CI with Maven
-
-
 on:
   push:
   pull_request:
   schedule:
     # Runs every day at 8 AM
     - cron: '0 8 */2 * *' 
-
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v3
     - name: Set up JDK 17

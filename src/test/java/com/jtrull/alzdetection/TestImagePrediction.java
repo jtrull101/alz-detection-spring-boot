@@ -68,7 +68,7 @@ public class TestImagePrediction {
     private static final String ID_KEY = "?id=";
 
     private static final int TEST_INVOCATIONS = AlzDetectionApplicationTests.TEST_INVOCATIONS;
-    private static final ObjectMapper MAPPER = AlzDetectionApplicationTests.MAPPPER;
+    private static final ObjectMapper MAPPER = AlzDetectionApplicationTests.MAPPER;
 
 
 	@Order(1)

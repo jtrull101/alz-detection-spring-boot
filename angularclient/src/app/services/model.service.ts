@@ -35,7 +35,7 @@ export class ModelService {
   }
 
   /**
-   *  Note: These methods are clearly not threadsafe. If we wanted to ensure a User could select a Model for their predictions and only their predictions, we would need to
+   *  Note: These methods are clearly not thread-safe. If we wanted to ensure a User could select a Model for their predictions and only their predictions, we would need to
    *    create Users in the database and store their associated Models and Predictions
    */
   getModelId(): number|undefined {

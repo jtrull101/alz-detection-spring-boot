@@ -11,7 +11,7 @@ import { ModelService } from 'src/app/services/model.service';
   styleUrls: ['./image-predict-random-category.component.css']
 })
 export class ImagePredictRandomCategoryComponent {
-  title = 'Prediction on Random MRI of Specific Cateogry';
+  title = 'Prediction on Random MRI of Specific Category';
   public prediction: ImagePrediction|undefined;
   no:number|undefined;
   veryMild:number|undefined;

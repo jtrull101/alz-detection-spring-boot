@@ -23,7 +23,7 @@ class AlzDetectionApplicationTests {
     @Autowired private MockMvc mvc;
 
     public static final int TEST_INVOCATIONS = 10;
-    public static final ObjectMapper MAPPPER = new ObjectMapper();
+    public static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Test
 	@Order(1)

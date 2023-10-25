@@ -10,7 +10,7 @@ import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 
 /**
- * Represenation of the required files needed to make a Tensorflow model using Amazon DJL.
+ * Representation of the required files needed to make a Tensorflow model using Amazon DJL.
  */
 @Entity
 @Table

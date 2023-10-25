@@ -154,7 +154,7 @@ public class ImageService {
     }
 
     /**
-     * Check the Image database for a prediction that has already occured for the specified File and the modelId
+     * Check the Image database for a prediction that has already occurred for the specified File and the modelId
      * 
      * @param file
      * @param modelId
@@ -346,7 +346,7 @@ public class ImageService {
                     }
                 }
             } catch (IOException e) {
-                throw new HttpClientErrorException (HttpStatusCode.valueOf(406), "Error while uncompressing dataset archive. message = " + e.getMessage());
+                throw new HttpClientErrorException (HttpStatusCode.valueOf(406), "Error while decompressing dataset archive. message = " + e.getMessage());
             }
         }
 

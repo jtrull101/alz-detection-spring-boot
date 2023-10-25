@@ -33,7 +33,7 @@ export class ImagePredictComponent {
     // this.progressRef = progress.ref('progress')
   }
 
-  onFilechange(event: any) {
+  onFileChange(event: any) {
     this.file = event.target.files[0];
   }
 
