@@ -3,6 +3,7 @@ import { BrowserModule } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
 import { HttpClientModule } from '@angular/common/http';
 
+
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { LoadModelComponent } from './components/model/load-model/load-model.component';
@@ -13,6 +14,7 @@ import { ModelDeleteAllComponent } from './components/model/model-delete-all/mod
 import { ImagePredictComponent } from './components/images/image-predict/image-predict.component';
 import { ImagePredictRandomComponent } from './components/images/image-predict-random/image-predict-random.component';
 import { ImagePredictRandomCategoryComponent } from './components/images/image-predict-random-category/image-predict-random-category.component';
+import { ImageDetailsComponent } from './components/images/image-details/image-details.component';
 import { ImagePredictDeleteComponent } from './components/images/image-predict-delete/image-predict-delete.component';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { MenuBodyComponent } from './components/page components/menu-body/menu-body.component';
@@ -21,9 +23,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { ModelService } from './services/model.service';
 import { ImagePredictionService } from './services/image-prediction.service';
 import { PageBodyComponent } from './components/page components/page-body/page-body.component';
-import { ModelIdPromptComponent } from './components/page components/model-id-prompt/model-id-prompt.component';
-import { ImageIdPromptComponent } from './components/page components/image-id-prompt/image-id-prompt.component';
 import { HomeComponent } from './components/home/home.component';
+import { NgProgressModule } from 'ngx-progressbar';
 
 
 @NgModule({
@@ -38,11 +39,10 @@ import { HomeComponent } from './components/home/home.component';
     ImagePredictRandomComponent,
     ImagePredictRandomCategoryComponent,
     ImagePredictDeleteComponent,
+    ImageDetailsComponent,
     MenuBodyComponent,
     PageBodyComponent,
-    ModelIdPromptComponent,
-    ImageIdPromptComponent,
-    HomeComponent
+    HomeComponent,
   ],
   imports: [
     BrowserModule,
@@ -51,11 +51,12 @@ import { HomeComponent } from './components/home/home.component';
     HttpClientModule,
     BrowserAnimationsModule,
     MatMenuModule,
-    MatButtonModule
+    MatButtonModule,
+    NgProgressModule
   ],
   providers: [
     ModelService,
-    ImagePredictionService,
+    ImagePredictionService
   ],
   bootstrap: [AppComponent]
 })

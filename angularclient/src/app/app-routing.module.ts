@@ -13,7 +13,7 @@ import { ImagePredictDeleteComponent } from './components/images/image-predict-d
 
 import { PageBodyComponent } from './components/page components/page-body/page-body.component';
 import { HomeComponent } from './components/home/home.component';
-
+import { ImageDetailsComponent } from './components/images/image-details/image-details.component';
 const routes: Routes = [
     { path: '', component: PageBodyComponent, children: [
       { path: '', component: HomeComponent },
@@ -25,6 +25,7 @@ const routes: Routes = [
       { path: 'model/predict', component: ImagePredictComponent },
       { path: 'model/predict/random', component: ImagePredictRandomComponent },
       { path: 'model/predict/random/:impairment', component: ImagePredictRandomCategoryComponent },
+      { path: 'model/predict/get', component: ImageDetailsComponent},
       { path: 'model/predict/delete', component: ImagePredictDeleteComponent }
     ]},
 ];

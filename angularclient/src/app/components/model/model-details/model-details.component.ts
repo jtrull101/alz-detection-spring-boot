@@ -17,7 +17,6 @@ export class ModelDetailsComponent {
   constructor(private service: ModelService, private route: ActivatedRoute) {
     this.model = {
       id: undefined,
-      name: '',
     };
   }
 
@@ -25,7 +24,9 @@ export class ModelDetailsComponent {
     this.route.queryParams.subscribe((params) => {
       this.id = params['id'];
     });
-    this.id = this.service.getModelId();
+    if (this.id == undefined) {
+      this.id = this.service.getModelId();
+    }
     this.getModelDetails();
   }
 

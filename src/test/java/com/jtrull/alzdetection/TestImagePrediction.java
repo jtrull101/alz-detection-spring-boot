@@ -211,7 +211,7 @@ public class TestImagePrediction {
     @RepeatedTest(TEST_INVOCATIONS)
     public void testGetPrediction() throws Exception {
         ImagePrediction initialPrediction = getInitialImagePrediction();
-        String url = createPredictUrl(initialPrediction.getAssociatedModel()) + ID_KEY + initialPrediction.getId();
+        String url = createGetPredictionUrl(initialPrediction.getAssociatedModel(), initialPrediction.getId());
         MvcResult _return = mvc.perform(get(url)
                     .contentType(MediaType.APPLICATION_JSON_VALUE))
                 .andExpect(status().isOk())
@@ -221,7 +221,6 @@ public class TestImagePrediction {
         ImagePrediction prediction = MAPPER.readValue(content, ImagePrediction.class);
         Assert.assertNotNull("Unable to marshall prediction object from content:" + content, prediction);
         // properties ignored by json 
-        initialPrediction.setFilepath(null);
         initialPrediction.setAssociatedModel(null);
         Assert.assertEquals("Prediction after GET does not match prediction from repository", initialPrediction, prediction);
     }
@@ -232,7 +231,7 @@ public class TestImagePrediction {
     public void testGetInvalidPredictionId() throws Exception {
         ImagePrediction initialPrediction = getInitialImagePrediction();
         long invalidId = 2345234523452345L;
-        String url = createPredictUrl(initialPrediction.getId()) + ID_KEY + invalidId;
+        String url = createGetPredictionUrl(initialPrediction.getAssociatedModel(), invalidId);
         try {
             mvc.perform(get(url)
                 .contentType(MediaType.APPLICATION_JSON))
@@ -254,7 +253,7 @@ public class TestImagePrediction {
     public void testGetInvalidModelIdForPrediction() throws Exception {
         ImagePrediction initialPrediction = getInitialImagePrediction();
         long invalidId = 2345234523452345L;
-        String url = createPredictUrl(invalidId) + ID_KEY + initialPrediction.getId();
+        String url = createGetPredictionUrl(invalidId, initialPrediction.getId());
         try {
             mvc.perform(get(url)
                 .contentType(MediaType.APPLICATION_JSON))
@@ -326,6 +325,10 @@ public class TestImagePrediction {
 
     private String createPredictUrl(Long modelId) {
         return BASE_URL + "/" + String.valueOf(modelId) + "/predict";
+    }
+
+    private String createGetPredictionUrl(Long modelId, long predictionId) {
+        return createPredictUrl(modelId) + "/get" + ID_KEY + predictionId;
     }
 
     public Model getModel() throws Exception {

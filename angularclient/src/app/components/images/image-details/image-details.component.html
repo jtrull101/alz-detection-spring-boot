@@ -4,9 +4,22 @@
 <div class="container">
 
   <div class="column mt-3">
-    <label for="formFile" class="form-label">Upload an MRI image to run through the Convolutional Neural Network for evaluation</label>
-    <input (change)="this.onFilechange($event)" class="form-control" type="file" id="formFile">
-    <button (click)="this.runPredictionOnFile()" type="button" class="btn btn-primary mt-3">Upload</button>
+    Input ID of Prediction to get
+    <div>
+      <input class="textBox" type="text" (keyup)="getImageId($event)">
+    </div>
+  </div>
+
+  <div class="column mt-3">
+    <button (click)="this.getPrediction()" type="button" class="btn btn-primary mt-3">Confirm</button>
+  </div>
+
+  <div *ngIf="running==true">
+    <br>
+    Fetching prediction from database... please wait...
+  </div>
+  <div *ngIf="running!=true">
+    <br><br>
   </div>
 
   <div class="row mt-5">
@@ -25,3 +38,4 @@
     </div>
   </div>
 </div>
+

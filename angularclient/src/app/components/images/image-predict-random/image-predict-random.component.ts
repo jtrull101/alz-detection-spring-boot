@@ -12,13 +12,14 @@ import { ModelService } from 'src/app/services/model.service';
 })
 export class ImagePredictRandomComponent {
   title = 'Prediction on Random MRI';
-  public prediction: ImagePrediction | undefined;
+  public prediction: ImagePrediction;
   no:number|undefined;
   veryMild:number|undefined;
   mild:number|undefined;
   moderate:number|undefined;
   modelId: number | undefined;
   img:any;
+  running:boolean=false;
 
   constructor(
     private service: ImagePredictionService,
@@ -26,10 +27,14 @@ export class ImagePredictRandomComponent {
     private route: ActivatedRoute
   ) {
     this.modelId = modelService.getModelId();
+    this.prediction = {
+      id:undefined
+    }
   }
 
   public predictRandom(): void {
     if (this.modelId) {
+      this.running=true;
       this.service.predictFromRandom(this.modelId).subscribe(
         (response: ImagePrediction) => {
           this.prediction = response;
@@ -42,8 +47,10 @@ export class ImagePredictRandomComponent {
           const category = paths[paths.length-2];
           const filename = paths[paths.length-1];
           this.img = "assets/test/" + category + "/" + filename;
+          this.running=false;
         },
         (error: HttpErrorResponse) => {
+          this.running=false;
           alert(error.message);
         }
       );

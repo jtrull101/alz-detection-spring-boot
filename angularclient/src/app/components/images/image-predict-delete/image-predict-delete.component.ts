@@ -2,6 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { ImagePredictionService } from 'src/app/services/image-prediction.service';
+import { ModelService } from 'src/app/services/model.service';
 
 @Component({
   selector: 'app-image-predict-delete',
@@ -9,12 +10,15 @@ import { ImagePredictionService } from 'src/app/services/image-prediction.servic
   styleUrls: ['./image-predict-delete.component.css']
 })
 export class ImagePredictDeleteComponent {
-  title = 'Confirmation if Delete of Prediction Was Successful';
-  modelId: number;
-  id: any;
+  title = 'Delete MRI from Database';
+  modelId: number|undefined;
+  id: number;
   response:boolean | undefined;
 
-  constructor(private service: ImagePredictionService, private route: ActivatedRoute
+  modelDefault = "Input ID of Model with Prediction";
+  imageDefault = "Input ID of Image Prediction to delete";
+
+  constructor(private service: ImagePredictionService, private route: ActivatedRoute, private modelService:ModelService
   ) {
     this.modelId = -1;
     this.id = -1;
@@ -24,20 +28,29 @@ export class ImagePredictDeleteComponent {
     this.route.params.subscribe((s) => {
       this.modelId = s['modelId'];
     });
+    if (this.modelId == undefined) {
+      this.modelId = this.modelService.getModelId();
+    }
     this.route.queryParams.subscribe(s => {
       this.id = s['id'];
     });
-    this.deletePrediction();
+  }
+
+  public getModelId(item:any): void {
+    this.modelId = item.target.value;
+  }
+  public getImageId(item:any): void {
+    this.id = item.target.value;
   }
 
   public deletePrediction(): void {
     if (this.modelId && this.id) {
-      console.log('running delete for modelId ' + this.modelId + ' and id: ' + this.id)
       this.service.deletePrediction(this.id, this.modelId).subscribe(
         (response: boolean) => {
           this.response = response;
         },
         (error: HttpErrorResponse) => {
+          this.response = false;
           alert(error.message);
         }
       );

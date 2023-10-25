@@ -3,6 +3,14 @@
 <div class="container">
   <button (click)="this.predictRandom()" type="button" class="btn btn-primary mt-3">Run New Prediction</button>
 
+  <div *ngIf="running==true">
+    <br>
+    Running prediction... please wait...
+  </div>
+  <div *ngIf="running!=true">
+    <br><br>
+  </div>
+
   <div class="row mt-5">
     <br class="mb-3">
 
@@ -10,7 +18,7 @@
       <img src={{img}} />
     </div>
 
-    <div class="col-md-4" *ngIf="prediction">
+    <div class="col-md-4" *ngIf="prediction && prediction.id != undefined">
       ID: {{ prediction.id }}<br>
       Actual Impairment Level: {{ prediction.actualValue }}<br>
       <br><br>

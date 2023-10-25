@@ -7,6 +7,14 @@
   <div class="row mt-5">
     <br class="mb-3">
 
+    <div *ngIf="running==true">
+      <br>
+      Running prediction... please wait...
+    </div>
+    <div *ngIf="running!=true">
+      <br><br>
+    </div>
+
     <div *ngIf="prediction">
       <img src={{img}} />
     </div>

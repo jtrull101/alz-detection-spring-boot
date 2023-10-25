@@ -32,7 +32,7 @@
   <button mat-menu-item routerLink="model/all">Choose Active Model</button>
   <button mat-menu-item routerLink="model/load">Add New Model</button>
   <button mat-menu-item routerLink="model">Get Details of Active Model</button>
-  <button mat-menu-item routerLink="model/delete">Delete Model Active Model</button>
+  <button mat-menu-item routerLink="model/delete">Delete Active Model</button>
   <button mat-menu-item routerLink="model/delete/all">Delete All Models</button>
 </mat-menu>
 
@@ -40,7 +40,8 @@
   <button mat-menu-item routerLink="model/predict">Submit new MRI for Assessment</button>
   <button mat-menu-item routerLink="model/predict/random">View Random MRI</button>
   <button mat-menu-item [matMenuTriggerFor]="randomMRI">View Random MRI by Impairment</button>
-  <button mat-menu-item routerLink="model/predict/delete">Delete MRI Prediciton Data by ID</button>
+  <button mat-menu-item routerLink="model/predict/get">Get MRI by ID</button>
+  <button mat-menu-item routerLink="model/predict/delete">Delete MRI Prediction Data by ID</button>
 </mat-menu>
 
 <mat-menu #randomMRI="matMenu">
@@ -49,3 +50,8 @@
   <button mat-menu-item routerLink="model/predict/random/Mild Impairment" >Mild Impairment</button>
   <button mat-menu-item routerLink="model/predict/random/Moderate Impairment" >Moderate Impairment</button>
 </mat-menu>
+
+<!--TBD , create one button per prediction -->
+<!-- <mat-menu #mriPredictions="matMenu">
+  <button mat-menu-item routerLink="model/predict/delete"></button>
+</mat-menu> -->

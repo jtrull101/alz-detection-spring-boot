@@ -20,6 +20,7 @@ export class ImagePredictRandomCategoryComponent {
   img:any;
   modelId: number | undefined;
   impairment:any;
+  running:boolean=false;
 
   constructor(private service: ImagePredictionService, private modelService:ModelService, private route:ActivatedRoute) {
     this.modelId = modelService.getModelId();
@@ -33,6 +34,7 @@ export class ImagePredictRandomCategoryComponent {
 
   public predictRandom(): void {
     if (this.modelId && this.impairment) {
+      this.running=true;
       this.service.predictFromRandomCategory(this.modelId, this.impairment).subscribe(
         (response: ImagePrediction) => {
           this.prediction = response;
@@ -45,8 +47,10 @@ export class ImagePredictRandomCategoryComponent {
           const category = paths[paths.length-2];
           const filename = paths[paths.length-1];
           this.img = "assets/test/" + category + "/" + filename;
+          this.running=false;
         },
         (error: HttpErrorResponse) => {
+          this.running=false;
           alert(error.message);
         }
       );
