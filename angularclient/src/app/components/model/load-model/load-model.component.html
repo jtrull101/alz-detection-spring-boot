@@ -1,0 +1,21 @@
+<br>
+<h2>{{ title }}</h2>
+
+<div class="container">
+  <div class="row mt-5">
+    <div>
+        <label for="formFile" class="form-label">Note that only .zips of valid Tensorflow models are accepted</label>
+        <input (change)="this.onFilechange($event)" class="form-control" type="file" id="formFile">
+        <button (click)="this.upload()" type="button" class="btn btn-primary mt-3">Upload</button>
+      </div>
+  </div>
+
+  <!-- show file upload progress -->
+
+  <div *ngIf="model">
+    <br><br>
+    Successfully loaded new model with ID: {{ model.id }}
+  </div>
+</div>
+
+

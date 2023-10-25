@@ -1,0 +1,59 @@
+<br>
+<h1>Alzheimer's Disease (AD) Detection with Machine Learning</h1>
+<br>
+<p>
+  This website is built with Angular, interacting with a Spring Boot server application built to support Alzheimer's Disease Detection, leveraging
+  Tensorflow models with Amazon's DJL framework, enabling deep learning support in Java. The purpose of this Machine Learning model is to
+  provide users with an additional form of prediction of impairment level through MRI analysis. Upon choosing a <b>Model</b> from which to run predictions
+  (a default model with 99.5% accuracy is included), the user can submit MRIs to the Angular frontend via the <b>Predictions</b> tab in the navbar, resulting in a readout of predicted level of Impairment
+  due to Alzheimer's Disease.
+</p>
+
+<br><br><br>
+<h2>Disclaimer</h2>
+<p>
+  The default model included with this site was trained with fictitious MRI data, used to simulate the changes that occur in the brain over the progression of Alzheimer's
+  Disease while not containing any potentially sensitive data.
+  Due to this fact and the nature to which Deep Learning works, the predictions resulting from the default model should <b>NEVER</b> be considered as 100% accurate and true to life.
+  Given a large amount of real MRI data, the model could be improved to eventually remove this disclaimer in the future but that is not possible at this point.
+</p>
+
+<br><br><br>
+<h2>How To Use This Site</h2>
+<p>
+  Using this site should be straight-forward, but steps are outlined below.
+</p>
+<ol>
+  <li><b>Select a Model</b> - Using the navbar at the top of the screen, click <b>Models</b>. Next, click <b>Choose Active Model</b>. For ease of use, a well performing model is included with this server. For information on how to use your own saved Tensorflow model, scroll down to <b>Using a Saved Tensorflow Model</b></li>
+  <li>When the Models have loaded, select one by clicking the associated button. Verify the desired model ID is listed</li>
+  <li><b>Submit an MRI</b> - Using the navbar at the top of the screen, click <b>Predictions</b>. Next, click <b>Submit new MRI for Assessment</b>.</li>
+  <li>Click <b>Browse...</b> to find an MRI image of a brain present on your machine. Note that random predictions can be sent and responses verified using the <b>View Random MRI</b> and <b>View Random MRI by Impairment</b> buttons</li>
+  <li>With a file selected, click <b>Upload</b></li>
+  <li>After a short delay, during which time the MRI image is compressed down to 128x128x3 images (the x3 at the end for RGB channels), then the images are compressed down to raw digit values from 0-255 representing brightness. The values are then normalized to a range from [0,1), and the data is sent to the currently active model for prediction.</li>
+</ol>
+
+<h2>Using a Saved Tensorflow Model</h2>
+<ol>
+  <li><b>Save a Tensorflow Model</b> - Tensorflow models can be saved using the appropriate save function in the language being used. For example, in Python, this method is <b>tensorflow.saved_model.save()</b></li>
+  <li>As a result of this saving, all relevant data for the model to again be loaded by Tensorflow is stored in the resulting .zip file</li>
+  <li><b>Load Newly Saved Model</b> - Using the navbar at the top of the screen, click <b>Models</b>. Next, click <b>Add New Model</b>.</li>
+  <li>On the resulting page, click <b>Browse...</b>. Find the model .zip you wish to upload, click <b>Submit</b>, and finally click <b>Upload</b>. Make note of the ID returned.</li>
+  <li><b>Select New Model</b> - Using the navbar at the top of the screen, click <b>Models</b>. Next, click <b>Choose Active Model</b>.</li>
+  <li>Wait for the resulting page to load. Find the model with the specified ID and click its button.</li>
+  <li><b>Perform Predictions</b> - Follow the steps described above to perform a prediction on this new model.</li>
+</ol>
+<br><br><br>
+<h2>Implementation Information</h2>
+<p>
+  The backend server is implemented with Spring Boot, utilizing an H2 database on disk. The Rest API exposed by this server supports most basic CRUD requests
+  to interact with both loaded Tensorflow models and individual MRI predictions.
+</p>
+<p>
+  The frontend is implemented with Angular, which sends HTTP requests to the Spring Boot server and returns a more beautified response. The user interface is also slightly
+  improved over plain REST requests sent through a RestClient like Postman.
+</p>
+<h3>Contact</h3>
+<p>Email: jttrull0@gmail.com</p>
+<a href="https://www.linkedin.com/in/jonathan--trull/">LinkedIn</a><br>
+<a href="https://github.com/jtrull101">GitHub</a>
+<br><br><br>

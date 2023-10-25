@@ -3,6 +3,7 @@ package com.jtrull.alzdetection.Image;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,6 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping(path = "api/v1/model/{modelId}/predict")
+@CrossOrigin(origins = "http://localhost:4200")
 public class ImageController {
     Logger logger = LoggerFactory.getLogger(ImageController.class);
 
@@ -41,15 +43,20 @@ public class ImageController {
         return this.imageService.runPredictionForRandomImage(modelId);
     }
 
-    @GetMapping("/{impairment}")
+    @GetMapping("/random/{impairment}")
     public ImagePrediction runPredictionForRandomImage(@PathVariable String impairment, @PathVariable Long modelId) {
         return this.imageService.runPredictionForRandomFromImpairmentCategory(impairment, modelId);
     }
 
+    @GetMapping("/get")
+    public ImagePrediction runGetPrediction(@RequestParam(value="id") long predictionId, @PathVariable Long modelId) {
+        return this.imageService.runGetPrediction(predictionId, modelId);
+    }
+
     // DELETE mappings
 
-    @DeleteMapping("/{predictionId}")
-    public boolean runDeletePrediction(@PathVariable long predictionId, @PathVariable Long modelId) {
+    @DeleteMapping("/delete")
+    public boolean runDeletePrediction(@RequestParam(value="id") long predictionId, @PathVariable Long modelId) {
         return this.imageService.runDeletePrediction(predictionId, modelId);
     }
 }

@@ -27,7 +27,6 @@ public class ImagePrediction {
         generator = "image_sequence"
     )
     private Long id;
-    @JsonIgnore
     private String filepath;
     private Integer conf_NoImpairment;
     private Integer conf_VeryMildImpairment;

@@ -10,6 +10,8 @@ import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.Map.Entry;
 
 import org.apache.commons.io.FilenameUtils;
 import org.slf4j.Logger;
@@ -96,9 +98,10 @@ public class ModelService {
             throw new HttpClientErrorException (HttpStatusCode.valueOf(415), "Unable to load model from file that is not a .zip");
         }
 
+        int hashDir = file.getName().hashCode();
         // Create directory to hold new model, constructed of a hash of the model's name.
         //      This assumption implies unique model zip names
-        Path newPath = Paths.get(returnModelPath() + "/" + file.getName().hashCode());
+        Path newPath = Paths.get(returnModelPath() + "/" + hashDir);
         try {
             Files.createDirectories(newPath);
         } catch (IOException e) {
@@ -119,12 +122,22 @@ public class ModelService {
         //      create a Model object and save to the database
         File resource = findModelResourceInDir(destinationFile.toFile().getName());
         Model m = createModelFromFilepath(resource);
-        // TODO: this may not work
-        addModelToInMemoryModels(m);
-        
+
         synchronized (modelRepository) {
-            return modelRepository.save(m);
+            modelRepository.save(m);
         }
+        
+        Optional<Model> found = modelRepository.findAll().stream()
+            .filter(model -> model.getFilepath().equals(resource.getParent()))
+            .filter(model -> model.getName().equals(resource.getName()))
+            .findAny();
+
+        if (found.isEmpty()) {
+            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find model, ensure you are using a model with a unique name: " + resource.getAbsolutePath());
+        }
+        // add model into memory with ID populated from repository
+        addModelToInMemoryModels(found.get());
+        return found.get();
     }
 
     /**
@@ -188,7 +201,7 @@ public class ModelService {
             throw new HttpClientErrorException (HttpStatusCode.valueOf(403), "Unable to delete default model");
         }
         if (modelRepository.findById(modelId).isEmpty()){
-            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find model with specified Id: " + modelId);
+            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find model with Id: " + modelId);
         }
 
         try {
@@ -213,10 +226,17 @@ public class ModelService {
     public boolean deleteAllModels() {
         try {
             synchronized (inMemoryModels) {
-                inMemoryModels.clear();
+                Set<Entry<Long, Criteria<Image, Classifications>>> entries = inMemoryModels.entrySet();
+                entries.stream()
+                    .filter(e -> e != null).filter(e -> e.getKey() != null)
+                    .filter(e -> e.getKey() != 1)
+                    .forEach(e -> inMemoryModels.remove(e.getKey()));
             }
             synchronized (modelRepository) {
-                modelRepository.deleteAll();
+                List<Model> models = modelRepository.findAll();
+                models.stream()
+                    .filter(m -> m.getId() != 1)
+                    .forEach(m -> modelRepository.delete(m));
             }
         }catch(Exception e) {
             throw new HttpClientErrorException (HttpStatusCode.valueOf(500), 
@@ -292,7 +312,7 @@ public class ModelService {
      */
     public Optional<File> getSavedModelInResourcesDir(String filename) {
         String path = returnModelPath();
-        logger.info("Running getResource for path: " + path);
+        logger.trace("Running getResource for path: " + path);
         try {
             Optional<File> defaultModelInBasePath = returnFileFromPath(filename, path);
             if (defaultModelInBasePath.isPresent()) return defaultModelInBasePath;

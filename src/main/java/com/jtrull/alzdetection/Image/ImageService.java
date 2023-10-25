@@ -106,7 +106,7 @@ public class ImageService {
 
         // fetch model from model repo
         if (!modelService.getInMemoryModels().containsKey(modelId)) {
-            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find model with specified Id: " + modelId);
+            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find model with Id: " + modelId);
         }
         Criteria<Image, Classifications> criteria = modelService.getInMemoryModels().get(modelId);
 
@@ -126,7 +126,7 @@ public class ImageService {
     public ImagePrediction runPredictionForRandomImage(Long modelId) {
         // fetch model from model repo
         if (!modelService.getInMemoryModels().containsKey(modelId)) {
-            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find model with specified Id: " + modelId);         
+            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find model with Id: " + modelId);         
         }
         Criteria<Image, Classifications> criteria = modelService.getInMemoryModels().get(modelId);
 
@@ -169,6 +169,19 @@ public class ImageService {
         return image;
     }
 
+     public ImagePrediction runGetPrediction(long predictionId, Long modelId) {
+        Optional<ImagePrediction> image = imageRepository.findById(predictionId);
+        if (image.isEmpty()) { 
+            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find prediction with Id: " + predictionId);
+        }
+
+        if (image.get().getAssociatedModel() != modelId) {
+            throw new HttpClientErrorException (HttpStatusCode.valueOf(400), "Error with request, unable to find prediction for modelId " + modelId);
+        }
+
+        return image.get();
+    }
+
     /**
      * Delete a prediction present in the Image database. Useful if a user desired to remove their potentially sensitive data from the server.
      * 
@@ -179,7 +192,7 @@ public class ImageService {
     public boolean runDeletePrediction(long fileId, long modelId) {
         Optional<ImagePrediction> image = imageRepository.findById(fileId);
         if (image.isEmpty()) { 
-            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find prediction with specified Id: " + fileId);
+            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find prediction with Id: " + fileId);
         }
         synchronized (imageRepository) {
             imageRepository.delete(image.get());
@@ -214,7 +227,7 @@ public class ImageService {
 
         // if not in repository, run prediction and add to repository
         if (!modelService.getInMemoryModels().containsKey(modelId)) {
-            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find model with specified Id: " + modelId);
+            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find model with Id: " + modelId);
         }
         Criteria<Image, Classifications> criteria = modelService.getInMemoryModels().get(modelId);
         ImagePrediction prediction = runPredictionOnModel(modelId, criteria, randomImage, categoryLabel);
@@ -398,4 +411,6 @@ public class ImageService {
             }
         }
     }
+
+   
 }

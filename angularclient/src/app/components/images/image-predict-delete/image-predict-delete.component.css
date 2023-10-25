@@ -1,0 +1,18 @@
+input.textBox {
+  margin-top: 5px;
+  margin-bottom: 5px;
+  height: 30px;
+  width: 350px;
+  font-size: 15px;
+  font-family: Verdana;
+  line-height: 30px;
+  display:inline-block;
+  vertical-align:middle;
+}
+
+label.inputLabel {
+  font-family: Verdana;
+  font-size: 15px;
+  line-height: 30px;
+  display:inline-block;
+}
