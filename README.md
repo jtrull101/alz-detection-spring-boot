@@ -189,76 +189,90 @@
 <table>
   <tr>
     <th>Description</th>
-    <th>Finished</th>
+    <th>Automated<br>Spring Boot</th>
+    <th>Automated<br>Angular</th>
     <th>Notes</th>
   </tr>
   <tr>
     <td>Start server, verify it comes up as expected</td>
     <td>&#10005;</td>
-    <td>Not automated</td>
+    <td>&#10005;</td>
   </tr>
   <tr>
     <td>Stop server, clean shutdown. Verify DB persists on restart</td>
     <td>&#10005;</td>
-    <td>Not automated</td>
+    <td>&#10005;</td>
   </tr>
   <tr>
     <td>Stop server, kill. Verify DB persists on restart</td>
     <td>&#10005;</td>
-    <td>Not automated</td>
+    <td>&#10005;</td>
   </tr>
   <tr>
     <td>Load default model, verify predictions</td>
     <td>&check;</td>
+    <td>&#10005;</td>
   </tr>
   <tr>
     <td>Load new model, verify predictions</td>
     <td>&check;</td>
+    <td>&#10005;</td>
   </tr>
   <tr>
     <td>Load invalid model, verify Bad Request</td>
     <td>&check;</td>
+    <td>&#10005;</td>
   </tr>
   <tr>
     <td>Get info on loaded model. Accuracy, loss, etc..</td>
+    <td>&#10005;</td>
     <td>&#10005;</td>
     <td>No accuracy/loss saved in database currently</td>
   </tr>
   <tr>
     <td>Get info on invalid model ID, verify Not Found</td>
     <td>&check;</td>
+    <td>&#10005;</td>
   </tr>
   <tr>
     <td>Delete model with valid model ID</td>
     <td>&check;</td>
+    <td>&#10005;</td>
   </tr>
   <tr>
     <td>Delete model with invalid model ID, verify Not Found</td>
     <td>&check;</td>
+    <td>&#10005;</td>
   </tr>
   <tr>
     <td>Run prediction for an MRI file, verify confidence returned</td>
     <td>&check;</td>
+    <td>&#10005;</td>
   </tr>
   <tr>
     <td>Run prediction for invalid MRI file, verify Bad Request</td>
     <td>&check;</td>
+    <td>&#10005;</td>
   </tr>
   <tr>
     <td>Run prediction for random file in Impairment category, verify confidence retrurned</td>
     <td>&check;</td>
+    <td>&#10005;</td>
   </tr>
   <tr>
     <td>Verify unable to run predictions invalid Impairment category, verify Bad Request</td>
     <td>&check;</td>
+    <td>&#10005;</td>
   </tr>
   <tr>
     <td>Run prediction for random test image, verify confidence retrurned</td>
     <td>&check;</td>
+    <td>&#10005;</td>
   </tr>
   <tr>
     <td>Verify unable to run predictions for invalid model ID, verify Bad Request</td>
     <td>&check;</td>
+    <td>&#10005;</td>
   </tr>
 </table>
 
