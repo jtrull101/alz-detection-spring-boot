@@ -101,7 +101,7 @@
         <li>The Angular server sends the delete request to the Spring Boot backend</li>
         <li>If the modelId==1, the Spring Boot server returns a failure, we cannot delete the default model</li>
         <li>The Spring Boot server deletes the desired model by ID from the in-memory models and the database</li>
-        <li>Angular resets the active model to modelId==1</li>
+        <li>User is able to make requests after this because Angular has reset its active model back to default</li>
       </ol>
     </td>
     <td>&check;</td>
@@ -116,7 +116,7 @@
         <li>The Angular server sends the delete request to the Spring Boot backend</li>
         <li>All models except the default model are removed from the Spring Boot in-memory models and the database</li>
         <li>Success or failure returned to Angular</li>
-        <li>Angular resets the active model to modelId==1</li>
+        <li>User is able to make requests after this because Angular has reset its active model back to default</li>
       </ol>
     </td>
     <td>&check;</td>
