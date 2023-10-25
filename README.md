@@ -1,7 +1,6 @@
 # Alzheimer's Disease Detection CNN - Spring Boot
 <br>
 
-
 <details>
   <summary>Table of Contents</summary>
   <ol>
@@ -23,7 +22,7 @@
 ## Description
 <p>
   This Spring Boot server is primarily designed for diagnosing Alzheimer's Disease (AD) using synthetic or fictitious MRI images. Serving as a launching pad for future full-stack 
-  endeavors that integrate machine learning, this project encapsulatd a total 6 weekdays, averaging 9 hours of work per day. While certaintly limited to just fictious images,
+  endeavors that integrate machine learning, this project encapsulated a total 6 weekdays, averaging 9 hours of work per day. While certainly limited to just fictitious images,
   this project provides a valuable foundation for learning, research, and innovation in the fields of Full Stack Java development and Machine Learning with Python integration.
 </p>
 
@@ -50,7 +49,7 @@
     <th>Notes</th>
   </tr>
   <tr>
-    <td>User desires to see all models avialable to predict against</td>
+    <td>User desires to see all models available to predict against</td>
     <td>
       <ol>
         <li>The user accesses the Angular frontend</li>
@@ -122,7 +121,7 @@
     <td>&check;</td>
   </tr>
   <tr>
-    <td>User desires to have an MRI of themself or someone close to them analyzed</td>
+    <td>User desires to have an MRI of their own or someone close to them analyzed</td>
     <td>
       <ol>
         <li>The user accesses the Angular frontend</li>
@@ -146,7 +145,8 @@
         <li>Angular sends a random prediction request to the Spring Boot server</li>
         <li>The Spring Boot server finds a random image and passes it to the predictive model</li>
         <li>The Spring Boot server returns the result to the Angular server</li>
-        <li>The Angular service shows a predicted level of Impairment due to AD with a confidence rating. Because this was one of the supplied test images, the actual value of Impairment will also be shown</li>
+        <li>The Angular service shows a predicted level of Impairment due to AD with a confidence rating. Because this was one of the supplied test 
+        images, the actual value of Impairment will also be shown</li>
       </ol>
     </td>
     <td>&check;</td>
@@ -280,11 +280,11 @@
 
 ### Backend Implementation
 <p>
-  The backend server is implemented with Spring Boot, utilizing an H2 database that persists on disk. The Rest API exposed by this server supports most basic CRUD requests
-  to interact with both Tensorflow models and individual MRI prediction.
+  The backend server is implemented with Spring Boot, utilizing an H2 database that persists on disk. The Rest API exposed by this server supports most 
+  basic CRUD requests to interact with both Tensorflow models and individual MRI prediction.
   <br> <br>
-  None of the model training occurs on this Spring Boot server. While we are leveraging Amazon's DJL framework that enables Deep Learning support in Java, the models were
-  all trained using the Neural Network found at the following link:
+  None of the model training occurs on this Spring Boot server. While we are leveraging Amazon's DJL framework that enables Deep Learning support in Java, 
+  the models were all trained using the Neural Network found at the following link:
 </p>
 <a href="https://github.com/jtrull101/alz-mri-neural-network">Python Alzheimer's Convolutional Neural Network</a><br>
 
@@ -292,19 +292,22 @@
 
 ### Frontend Implementation
 <p>
-  The frontend server is implemented with Angular and serves as a simplistic yet clean interface to interact with the Spring Boot server than the Rest API. The home page can be seen below, accessed at http://localhost:4200
+  The frontend server is implemented with Angular and serves as a simplistic yet clean interface to interact with the Spring Boot server than the Rest API. 
+  The home page can be seen below, accessed at http://localhost:4200
 </p>
 <img src="images/screenshot_homepage_springboot.png">
 <p>
   From the homepage, a user can navigate to one of several options under both the <b>Models</b> and <b>Predictions</b> headers. 
-  In this readme, we've just shown the pages required to access to submit a prediction to the default model. To choose the default model, navigate to <b>Models</b> -> <b>Choose Active Model</b>. 
-  Click one of the following options and verify the text stating 'Current Model: {ID}' updates correctly. The default model will always have ID == 1.
+  In this readme, we've just shown the pages required to access to submit a prediction to the default model. To choose the default model, navigate to 
+  <b>Models</b> -> <b>Choose Active Model</b>. Click one of the following options and verify the text stating 'Current Model: {ID}' updates correctly. 
+  The default model will always have ID == 1.
 </p>
 <img src="images/screenshot_choosemodel_springboot.png">
 <p>
-  Next, navigate to <b>Predictions</b> -> <b>Submit new MRI for Assessment</b> to see the next screenshot shown below. From here, choose a file to upload to the predictive model that you have chosen.
-  For convenience, test images (that the default model was not trained on) are included in src/main/resources/images/Combined Dataset.zip. Unzip this and choose an image. Each fictitious MRI in this dataset
-  is sorted by the Impairment level that the MRI was emulating. Because of this fact, we will have confidence if the model is perfoming as expected after uploading some MRIs and verifying their predictions
+  Next, navigate to <b>Predictions</b> -> <b>Submit new MRI for Assessment</b> to see the next screenshot shown below. From here, choose a file to upload to the 
+  predictive model that you have chosen. For convenience, test images (that the default model was not trained on) are included in 
+  src/main/resources/images/Combined Dataset.zip. Unzip this and choose an image. Each fictitious MRI in this dataset is sorted by the Impairment level that the MRI 
+  was emulating. Because of this fact, we will have confidence if the model is performing as expected after uploading some MRIs and verifying their predictions
   match our actual value.
 </p>
 <img src="images/screenshot_predictionresult_springboot.png">

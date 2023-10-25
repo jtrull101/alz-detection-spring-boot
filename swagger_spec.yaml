@@ -1,0 +1,255 @@
+openapi: 3.0.1
+info:
+  title: OpenAPI definition
+  version: v0
+servers:
+  - url: http://localhost:8080
+    description: Generated server url
+paths:
+  /api/v1/model/{modelId}/predict:
+    post:
+      tags:
+        - image-controller
+      operationId: runPredictionForImage
+      parameters:
+        - name: modelId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              required:
+                - image
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ImagePrediction'
+  /api/v1/model/load:
+    post:
+      tags:
+        - model-controller
+      operationId: loadModelFromFile
+      requestBody:
+        content:
+          application/json:
+            schema:
+              required:
+                - file
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Model'
+  /api/v1/model:
+    get:
+      tags:
+        - model-controller
+      operationId: getModelById
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Model'
+  /api/v1/model/{modelId}/predict/random:
+    get:
+      tags:
+        - image-controller
+      operationId: runPredictionForRandomImage
+      parameters:
+        - name: modelId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ImagePrediction'
+  /api/v1/model/{modelId}/predict/random/{impairment}:
+    get:
+      tags:
+        - image-controller
+      operationId: runPredictionForRandomImage_1
+      parameters:
+        - name: impairment
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: modelId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ImagePrediction'
+  /api/v1/model/{modelId}/predict/get:
+    get:
+      tags:
+        - image-controller
+      operationId: runGetPrediction
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: modelId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ImagePrediction'
+  /api/v1/model/all:
+    get:
+      tags:
+        - model-controller
+      operationId: getAllModels
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Model'
+  /api/v1/model/{modelId}/predict/delete:
+    delete:
+      tags:
+        - image-controller
+      operationId: runDeletePrediction
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: modelId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: boolean
+  /api/v1/model/delete:
+    delete:
+      tags:
+        - model-controller
+      operationId: deleteModelById
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: boolean
+  /api/v1/model/delete/all:
+    delete:
+      tags:
+        - model-controller
+      operationId: deleteAllModels
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: boolean
+components:
+  schemas:
+    ImagePrediction:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        filepath:
+          type: string
+        conf_NoImpairment:
+          type: integer
+          format: int32
+        conf_VeryMildImpairment:
+          type: integer
+          format: int32
+        conf_MildImpairment:
+          type: integer
+          format: int32
+        conf_ModerateImpairment:
+          type: integer
+          format: int32
+        actualValue:
+          type: string
+          enum:
+            - Mild Impairment
+            - No Impairment
+            - Moderate Impairment
+            - Very Mild Impairment
+    Model:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
