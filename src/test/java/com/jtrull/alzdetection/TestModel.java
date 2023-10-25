@@ -6,13 +6,13 @@ import org.junit.Assert;
 import org.junit.experimental.ParallelComputer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.RepeatedTest;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestClassOrder;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.ClassOrderer;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.runner.JUnitCore;
+import org.junit.runner.Result;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -74,7 +74,6 @@ public class TestModel {
 	 * 
      * @throws Exception
      */
-    @Test
 	@Order(1)
 	@RepeatedTest(TEST_INVOCATIONS)
 	public void testLoadModel() throws Exception {
@@ -122,7 +121,6 @@ public class TestModel {
 	 * 
 	 * @throws Exception
 	 */
-	@Test
 	@Order(2)
 	@RepeatedTest(TEST_INVOCATIONS)
 	public void testLoadInvalidModel() throws Exception {
@@ -156,7 +154,6 @@ public class TestModel {
 	 * 
 	 * @throws Exception
 	 */
-	@Test
 	@Order(2)
 	@RepeatedTest(TEST_INVOCATIONS)
 	public void testLoadNonZipAsModel() throws Exception {
@@ -194,8 +191,7 @@ public class TestModel {
      * Get model by specified modelId and assert the model matches the model we sent in
 	 * 
      * @throws Exception
-     */
-	@Test 
+     */ 
 	@Order(2)
 	@RepeatedTest(TEST_INVOCATIONS)
 	public void testGetModel() throws Exception {
@@ -239,7 +235,6 @@ public class TestModel {
 	 * 
 	 * @throws Exception
 	 */
-	@Test 
 	@Order(2)
 	@RepeatedTest(TEST_INVOCATIONS)
 	public void testGetModelInvalidId() throws Exception {
@@ -265,7 +260,6 @@ public class TestModel {
 	 * 
      * @throws Exception
      */
-    @Test
     @Order(2)
 	@RepeatedTest(TEST_INVOCATIONS)
     public void testGetAllModels() throws Exception {
@@ -296,7 +290,6 @@ public class TestModel {
 	 * 
      * @throws Exception
      */
-	@Test
 	@Order(3)
 	@RepeatedTest(TEST_INVOCATIONS)
 	public void testInvalidModelDelete() throws Exception {
@@ -319,7 +312,6 @@ public class TestModel {
 	/** 
 	 * Attempt to delete the default model and assert the failure matches expectations
 	 */
-	@Test
 	@Order(3)
 	@RepeatedTest(TEST_INVOCATIONS)
 	public void testDeleteDefaultModel() throws Exception {
@@ -343,7 +335,6 @@ public class TestModel {
 	 * 
 	 * @throws Exception
 	 */
-	@Test
 	@Order(3)
 	@RepeatedTest(TEST_INVOCATIONS)
 	@Execution(SAME_THREAD) 
@@ -367,7 +358,6 @@ public class TestModel {
 	 * 
 	 * @throws Exception
      */
-    @Test
     @Order(4)
 	@RepeatedTest(TEST_INVOCATIONS)
 	@Execution(SAME_THREAD) 
@@ -383,14 +373,14 @@ public class TestModel {
 	/**
 	 * Run all tests in class concurrently
 	 */
-	@Test
 	@Order(5)
-	@RepeatedTest(TEST_INVOCATIONS)
+	// @RepeatedTest(TEST_INVOCATIONS)
     public void runAllTests() {
 		int numConcurrent = 25_000;
         Class<?>[] classes  = new Class<?>[numConcurrent];
         Arrays.fill(classes, TestModel.class);
-        JUnitCore.runClasses(new ParallelComputer(true,true), classes);
+		Result result = JUnitCore.runClasses(new ParallelComputer(true, true), classes);
+        Assert.assertTrue("Failed during execution of concurrent tests", result.wasSuccessful());
     }
 
 	/**

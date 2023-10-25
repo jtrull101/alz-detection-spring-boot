@@ -7,9 +7,9 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.json.JSONObject;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.RepeatedTest;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.runner.JUnitCore;
+import org.junit.runner.Result;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -71,9 +71,8 @@ public class TestImagePrediction {
     private static final ObjectMapper MAPPER = AlzDetectionApplicationTests.MAPPPER;
 
 
-    @Test
 	@Order(1)
-    @RepeatedTest(10)
+    @RepeatedTest(TEST_INVOCATIONS)
 	public void testRandomPrediction() throws Exception {
         String url = createPredictUrl(getModel(1L).getId());
         MvcResult _return = mvc.perform(get(url + "/random")
@@ -83,9 +82,8 @@ public class TestImagePrediction {
         validatePrediction(_return);
 	}
 
-    @Test
 	@Order(1)
-    @RepeatedTest(10)
+    @RepeatedTest(TEST_INVOCATIONS)
 	public void testRandomPredictionFromCategory() throws Exception {
         for (ImpairmentEnum val : ImpairmentEnum.values()) {
             MvcResult _return = mvc.perform(get(createPredictUrl(getModel(1L).getId()) + "/random/" + val.toString())
@@ -96,9 +94,8 @@ public class TestImagePrediction {
         }
 	}
 
-    @Test
 	@Order(1)
-    @RepeatedTest(10)
+    @RepeatedTest(TEST_INVOCATIONS)
 	public void testRandomPredictionFromInvalidCategory() throws Exception {
         String impairment = RandomStringUtils.random(5, true, true);
 
@@ -117,9 +114,8 @@ public class TestImagePrediction {
         }
 	}
 
-    @Test
 	@Order(2)
-    @RepeatedTest(10)
+    @RepeatedTest(TEST_INVOCATIONS)
 	public void testPredictionFromFile() throws Exception {
         ImagePrediction initialImagePrediction = getInitialImagePrediction();
  
@@ -171,9 +167,8 @@ public class TestImagePrediction {
     }
 
 
-    @Test
 	@Order(2)
-    @RepeatedTest(10)
+    @RepeatedTest(TEST_INVOCATIONS)
     public void testPredictionFromInvalidFile() throws Exception {
         String path = imageService.returnImagePath();
 		String filepath = path + "/test.json";
@@ -206,7 +201,6 @@ public class TestImagePrediction {
 		}
     }
 
-    @Test
     @Order(3)
     @RepeatedTest(TEST_INVOCATIONS)
     public void testGetPrediction() throws Exception {
@@ -225,7 +219,6 @@ public class TestImagePrediction {
         Assert.assertEquals("Prediction after GET does not match prediction from repository", initialPrediction, prediction);
     }
 
-    @Test
     @Order(3)
     @RepeatedTest(TEST_INVOCATIONS)
     public void testGetInvalidPredictionId() throws Exception {
@@ -247,7 +240,6 @@ public class TestImagePrediction {
         }
     }
 
-    @Test
     @Order(3)
     @RepeatedTest(TEST_INVOCATIONS)
     public void testGetInvalidModelIdForPrediction() throws Exception {
@@ -273,19 +265,18 @@ public class TestImagePrediction {
     /**
 	 * Run all tests in class concurrently
 	 */
-	@Test
 	@Order(4)
-	@RepeatedTest(TEST_INVOCATIONS)
+	// @RepeatedTest(TEST_INVOCATIONS)
     public void runAllTests() {
         int numConcurrent = 25_000;
         Class<?>[] classes  = new Class<?>[numConcurrent];
         Arrays.fill(classes, TestImagePrediction.class);
-        JUnitCore.runClasses(new ParallelComputer(true, true), classes);
+        Result result = JUnitCore.runClasses(new ParallelComputer(true, true), classes);
+        Assert.assertTrue("Failed during execution of concurrent tests", result.wasSuccessful());
     }
 
-    @Test
-    @Order(3)
-    @RepeatedTest(10)
+    @Order(5)
+    @RepeatedTest(TEST_INVOCATIONS)
     public void testDeletePrediction() throws Exception {
         Optional<ImagePrediction> imageOpt = imageRepository.findAll().stream().findFirst();
         if (imageOpt.isEmpty()) {
@@ -303,9 +294,8 @@ public class TestImagePrediction {
         Assert.assertTrue("Result of delete request did not match expected true", Boolean.valueOf(content));
     }
 
-    @Test
-    @Order(3)
-    @RepeatedTest(10)
+    @Order(5)
+    @RepeatedTest(TEST_INVOCATIONS)
     public void testInvalidDeletePrediction() throws Exception {
         long invalidId = 2345234523452345L;
         try {
