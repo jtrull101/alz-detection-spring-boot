@@ -1,4 +1,4 @@
-<h1>Alzheimer's Detection CNN - Spring Boot</h1>
+<h1>Alzheimer's Disease Detection CNN - Spring Boot</h1>
 <br>
 
 
