@@ -30,18 +30,37 @@
 
 <h2>Frontend Implementation</h2>
 <p>
-  The frontend server is implemented with Angular and serves as a simplistic yet clean interface to interact with the Spring Boot server than the Rest API.
+  The frontend server is implemented with Angular and serves as a simplistic yet clean interface to interact with the Spring Boot server than the Rest API. The home page can be seen below, accessed at http://localhost:4200
 </p>
 <img src="images/screenshot_homepage_springboot.png">
-
+<p>
+  From the homepage, a user can navigate to one of several options under both the <b>Models</b> and <b>Predictions</b> headers. 
+  In this readme, we've just shown the pages required to access to submit a prediction to the default model. To choose the default model, navigate to <b>Models</b> -> <b>Choose Active Model</b>. 
+  Click one of the following options and verify the text stating 'Current Model: {ID}' updates correctly. The default model will always have ID == 1.
+</p>
 <img src="images/screenshot_choosemodel_springboot.png">
-
+<p>
+  Next, navigate to <b>Predictions</b> -> <b>Submit new MRI for Assessment</b> to see the next screenshot shown below. From here, choose a file to upload to the predictive model that you have chosen.
+  For convenience, test images (that the default model was not trained on) are included in src/main/resources/images/Combined Dataset.zip. Unzip this and choose an image. Each fictitious MRI in this dataset
+  is sorted by the Impairment level that the MRI was emulating. Because of this fact, we will have confidence if the model is perfoming as expected after uploading some MRIs and verifying their predictions
+  match our actual value.
+</p>
 <img src="images/screenshot_predictionresult_springboot.png">
+
 
 <h2>Pending Work</h2>
 <ul>
-  <li>Implement safer keys in the database. Currently just incrementing
+  <li>Automated testing for Angular frontend</li>
+  <li>Increase test coverage for Spring Boot server</li>
   <li>Angular frontend not handling exceptions from the backend</li>
+  <li>Implement safer keys in the database. Currently just incrementing
+  <li>Add Users - should have their own inventory of models and predictions</li>
+  <li>SSL for security when dealing with real data</li>
+</ul>
+
+<h2>Open Questions</h2>
+<ul>
+  <li>When running predict() on an image, should we run predict for every model? (under user?)</li>
 </ul>
 
 <h3>Contact</h3>
