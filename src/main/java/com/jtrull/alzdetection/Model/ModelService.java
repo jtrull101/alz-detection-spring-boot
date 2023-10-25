@@ -126,10 +126,10 @@ public class ModelService {
         synchronized (modelRepository) {
             modelRepository.save(m);
         }
-        modelRepository.findAll().stream().forEach(model -> logger.info("model: " + model));
-
+        
         Optional<Model> found = modelRepository.findAll().stream()
             .filter(model -> model.getFilepath().equals(resource.getParent()))
+            .filter(model -> model.getName().equals(resource.getName()))
             .findAny();
 
         if (found.isEmpty()) {
