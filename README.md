@@ -305,6 +305,7 @@
   <li>Implement safer keys in the database. Currently just incrementing
   <li>Add Users - should have their own inventory of models and predictions</li>
   <li>SSL for security when dealing with real data</li>
+  <li>Fix concurrency issues</li>
 </ul>
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
