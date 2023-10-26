@@ -240,7 +240,7 @@ public class ModelService {
             }
         }catch(Exception e) {
             throw new HttpClientErrorException (HttpStatusCode.valueOf(500), 
-                "Error occurred during deletion of all models. message = " + e.getMessage());
+                "Error occurred during deletion of all models. e = " + e);
         }
         return true;
     }
