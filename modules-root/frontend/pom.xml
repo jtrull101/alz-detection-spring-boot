@@ -108,7 +108,6 @@
       <resource>
         <!-- we copy the content of the frontend directory in the final artifact -->
         <directory>${basedir}/dist/${app.name}</directory>
-        <targetPath>public</targetPath>
         <filtering>false</filtering>
       </resource>
     </resources>
