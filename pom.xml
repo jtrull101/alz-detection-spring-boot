@@ -8,9 +8,9 @@
     <description>Full stack application to assist in Alzheimer's Disease diagnosis</description>
 
     <properties>
-        <maven.compiler.target>17</maven.compiler.target>
-		<maven.compiler.source>17</maven.compiler.source>
         <java.version>17</java.version>
+        <maven.compiler.target>${java.version}</maven.compiler.target>
+		<maven.compiler.source>${java.version}</maven.compiler.source>
         <frontend-maven-plugin.version>1.6</frontend-maven-plugin.version>
         <node.version>v18.18.2</node.version>
         <npm.version>10.2.0</npm.version>
