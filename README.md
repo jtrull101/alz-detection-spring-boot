@@ -316,7 +316,7 @@
 
 ### Pending Work
 <ul>
-  <li>Automated testing for Angular frontend</li>
+  <li>Automated testing for Angular frontend - using Karma: https://karma-runner.github.io/6.4/index.html</li>
   <li>Increase test coverage for Spring Boot server</li>
   <li>Angular frontend not handling exceptions from the backend</li>
   <li>Implement safer keys in the database. Currently just incrementing
@@ -324,6 +324,7 @@
   <li>SSL for security when dealing with real data</li>
   <li>Fix concurrency issues</li>
   <li>Remove test images from Angular server, rely on images in backend</li>
+  <li>Fix packaging of final jar - currently not executable</li>
 </ul>
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
