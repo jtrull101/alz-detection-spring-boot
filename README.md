@@ -323,6 +323,7 @@
   <li>Add Users - should have their own inventory of models and predictions</li>
   <li>SSL for security when dealing with real data</li>
   <li>Fix concurrency issues</li>
+  <li>Remove test images from Angular server, rely on images in backend</li>
 </ul>
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
