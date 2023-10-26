@@ -290,11 +290,14 @@ public class ModelService {
      */
     private Optional<File> returnFileFromPath(String filename, String path) {
         try {
-            return Files.walk(Paths.get(path))
+            logger.info("searching for files in path: " + path);
+            Optional<File> opt = Files.walk(Paths.get(path))
                         .filter(Files::isRegularFile)
                         .filter(r -> r.toFile().getName().equals(filename))
                         .map(x -> x.toFile())
                         .findFirst();
+            logger.info("found files: " + opt);
+            return opt;
 
         } catch (IOException e) {
             throw new HttpClientErrorException (HttpStatusCode.valueOf(409), 
@@ -312,11 +315,13 @@ public class ModelService {
      */
     public Optional<File> getSavedModelInResourcesDir(String filename) {
         String path = returnModelPath();
-        logger.trace("Running getResource for path: " + path);
+        logger.info("Running getResource for path: " + path);
         try {
             Optional<File> defaultModelInBasePath = returnFileFromPath(filename, path);
-            if (defaultModelInBasePath.isPresent()) return defaultModelInBasePath;
-
+            if (defaultModelInBasePath.isPresent()) {
+                logger.info("found default model: " + defaultModelInBasePath.get().getAbsolutePath());   
+                return defaultModelInBasePath;
+            }
             // find all files
             Optional<Optional<File>> f = Files.walk(Paths.get(path))
                     .filter(Files::isDirectory)

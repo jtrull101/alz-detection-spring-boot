@@ -6,7 +6,7 @@
 	<parent>
         <groupId>com.jtrull</groupId>
         <artifactId>module-parent</artifactId>
-        <version>1.0.0-SNAPSHOT</version>
+        <version>0.0.1-SNAPSHOT</version>
     </parent>
 
 	<groupId>com.jtrull</groupId>
@@ -118,18 +118,16 @@
 				<version>2.7</version>
 				<executions>
 					<execution>
-					<id>copy-resources</id>
+					<id>Copy default model to Angular</id>
 					<phase>validate</phase>
 					<goals>
 						<goal>copy-resources</goal>
 					</goals>
 					<configuration>
-						<outputDirectory>${project.build.directory}/classes/resources/</outputDirectory>
+						<outputDirectory>${project.parent.basedir}/frontend/model/</outputDirectory>
 						<resources>
 							<resource>
-								<!-- fix this -->
-								<!-- https://medium.com/@frithjof.hoppe/setup-a-single-angular-6-and-spring-boot-project-with-maven-ac656c7753ff -->
-								<directory>${project.parent.basedir}/frontend/src/main/web/dist/frontendApp/</directory>
+								<directory>${project.basedir}/src/main/resources/model/</directory>
 							</resource>
 						</resources>
 					</configuration>

@@ -7,13 +7,13 @@
   <parent>
     <groupId>com.jtrull</groupId>
     <artifactId>module-parent</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>0.0.1-SNAPSHOT</version>
   </parent>
 
   <groupId>com.jtrull</groupId>
   <artifactId>frontend</artifactId>
   <version>0.0.1-SNAPSHOT</version>
-  <name>alz-detection-angularclient</name>
+  <name>alz-detection-frontend</name>
   <description>Angular frontend</description>
   <packaging>jar</packaging>
 
@@ -74,7 +74,7 @@
         <artifactId>exec-maven-plugin</artifactId>
         <version>3.1.0</version>
         <executions>
-          <execution>
+          <!-- <execution>
             <id>install-dependencies</id>
             <phase>package</phase>
             <goals>
@@ -86,7 +86,7 @@
                 <argument>install</argument>
               </arguments>
             </configuration>
-          </execution>
+          </execution> -->
           <execution>
             <id>build-frontend</id>
             <phase>package</phase>
@@ -102,13 +102,37 @@
           </execution>
         </executions>
       </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-resources-plugin</artifactId>
+        <version>2.7</version>
+        <executions>
+          <execution>
+            <id>copy-resources</id>
+            <phase>validate</phase>
+            <goals>
+              <goal>copy-resources</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${project.basedir}/target/classes/model</outputDirectory>
+              <resources>
+                <resource>
+                  <directory>${project.basedir}/model/</directory>
+                </resource>
+              </resources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
+
+
+
 
     <resources>
       <resource>
         <!-- we copy the content of the frontend directory in the final artifact -->
-        <directory>${basedir}/dist/${app.name}</directory>
-        <filtering>false</filtering>
+        <directory>${project.basedir}/dist/${app.name}</directory>
       </resource>
     </resources>
   </build>
