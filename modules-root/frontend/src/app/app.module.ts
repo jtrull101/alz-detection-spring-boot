@@ -24,7 +24,6 @@ import { ModelService } from './services/model.service';
 import { ImagePredictionService } from './services/image-prediction.service';
 import { PageBodyComponent } from './components/page components/page-body/page-body.component';
 import { HomeComponent } from './components/home/home.component';
-import { NgProgressModule } from 'ngx-progressbar';
 
 
 @NgModule({
@@ -52,7 +51,6 @@ import { NgProgressModule } from 'ngx-progressbar';
     BrowserAnimationsModule,
     MatMenuModule,
     MatButtonModule,
-    NgProgressModule
   ],
   providers: [
     ModelService,

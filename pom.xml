@@ -2,18 +2,22 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.jtrull</groupId>
-    <artifactId>alz-detection</artifactId>
+    <artifactId>alz-detection-fullstack</artifactId>
     <packaging>pom</packaging>
     <version>1.0.0-SNAPSHOT</version>
+    <description>Full stack application to assist in Alzheimer's Disease diagnosis</description>
+
+    <properties>
+        <maven.compiler.target>17</maven.compiler.target>
+		<maven.compiler.source>17</maven.compiler.source>
+        <java.version>17</java.version>
+        <frontend-maven-plugin.version>1.6</frontend-maven-plugin.version>
+        <node.version>v18.18.0</node.version>
+        <npm.version>10.2.0</npm.version>
+    </properties>
 
     <dependencyManagement>
         <dependencies>
-            <dependency>
-                <groupId>junit</groupId>
-                <artifactId>junit</artifactId>
-                <version>4.11</version>
-                <scope>test</scope>
-            </dependency>
             <dependency>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
