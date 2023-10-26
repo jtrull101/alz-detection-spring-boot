@@ -360,7 +360,7 @@ public class TestModel {
      */
     @Order(4)
 	@RepeatedTest(TEST_INVOCATIONS)
-	@Execution(SAME_THREAD) 
+	// @Execution(SAME_THREAD) 
     public void testDeleteAllModels() throws Exception {
         MvcResult result = mvc.perform(delete(DELETE_ALL_URL)
 				.contentType(MediaType.APPLICATION_JSON))

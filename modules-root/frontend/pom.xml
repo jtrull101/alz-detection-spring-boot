@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
@@ -14,7 +15,12 @@
   <version>0.0.1-SNAPSHOT</version>
   <name>alz-detection-angularclient</name>
   <description>Angular frontend</description>
-  <packaging>pom</packaging>
+  <packaging>jar</packaging>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <app.name>angularclient</app.name>
+  </properties>
 
   <build>
     <plugins>
@@ -61,13 +67,50 @@
           </execution>
         </executions>
       </plugin>
+
+      <!-- package up frontend -->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>3.1.0</version>
+        <executions>
+          <execution>
+            <id>install-dependencies</id>
+            <phase>package</phase>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            <configuration>
+              <executable>npm</executable>
+              <arguments>
+                <argument>install</argument>
+              </arguments>
+            </configuration>
+          </execution>
+          <execution>
+            <id>build-frontend</id>
+            <phase>package</phase>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            <configuration>
+              <executable>ng</executable>
+              <arguments>
+                <argument>build</argument>
+              </arguments>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
 
     <resources>
       <resource>
-          <!-- we copy the content of the frontend directory in the final artifact -->
-          <directory>dist/angularclient</directory>
+        <!-- we copy the content of the frontend directory in the final artifact -->
+        <directory>${basedir}/dist/${app.name}</directory>
+        <targetPath>public</targetPath>
+        <filtering>false</filtering>
       </resource>
-  </resources>
+    </resources>
   </build>
 </project>
