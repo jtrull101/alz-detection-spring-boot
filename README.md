@@ -31,7 +31,7 @@
 ## Key Points
 <ol>
   <li><b>Synthetic MRI Analysis:</b> The server specializes in analyzing synthetic MRI images to simulate the diagnosis of AD with the assistance of AI</li>
-  <li><b>Educational and Research Tool:</b> This project provides a controlled environment for healthcare professionals, students and researches to realize the impact AI could provide in early diagnosis of AD</li>
+  <li><b>Educational and Research Tool:</b> This project provides a controlled environment for healthcare professionals, students and researchers to realize the impact AI could provide in early diagnosis of AD</li>
   <li><b>Explore Machine Learning Integration:</b> As a starting point, this project demonstrates the potential integrations of Machine Learning into a Full Stack solution</li>
   <li><b>Use of Real Data:</b> Due to the server supporting the injection of custom saved Tensorflow models, upon the development of a model that has high accuracy with real MRI images, that model can be loaded into this site and predictions with real MRI images can be run. Note one should never take the findings of this ML model over their own medical providers</li>
 </ol>
