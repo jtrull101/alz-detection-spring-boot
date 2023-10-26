@@ -1,0 +1,17 @@
+
+<br>
+<h2>{{ title }}</h2>
+
+<div class="container">
+  <div class="row mt-5">
+    <div>
+        <button (click)="this.deleteAllModels()" type="button" class="btn btn-primary mt-3">Delete All Models</button>
+      </div>
+  </div>
+  <div *ngIf="response">
+    <br><br>
+    Response: {{ response }}
+  </div>
+</div>
+
+
