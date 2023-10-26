@@ -8,7 +8,9 @@
 
 name: Java CI with Maven
 on:
-  push:
+  push: 
+    branches:
+        - master
   pull_request:
   schedule:
     # Runs every day at 8 AM

@@ -94,11 +94,13 @@
               <goal>exec</goal>
             </goals>
             <configuration>
-              <executable>ng</executable>
+              <executable>npm</executable>
               <arguments>
-                <argument>build</argument>
+                  <argument>run</argument>
+                  <argument>ng</argument>
+                  <argument>build</argument>
               </arguments>
-            </configuration>
+          </configuration>
           </execution>
         </executions>
       </plugin>
@@ -125,9 +127,6 @@
         </executions>
       </plugin>
     </plugins>
-
-
-
 
     <resources>
       <resource>
