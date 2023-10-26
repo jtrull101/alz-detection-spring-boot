@@ -74,7 +74,7 @@
         <artifactId>exec-maven-plugin</artifactId>
         <version>3.1.0</version>
         <executions>
-          <!-- <execution>
+          <execution>
             <id>install-dependencies</id>
             <phase>package</phase>
             <goals>
@@ -86,7 +86,7 @@
                 <argument>install</argument>
               </arguments>
             </configuration>
-          </execution> -->
+          </execution>
           <execution>
             <id>build-frontend</id>
             <phase>package</phase>
