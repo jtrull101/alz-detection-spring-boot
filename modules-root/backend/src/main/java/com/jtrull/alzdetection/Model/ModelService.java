@@ -518,9 +518,8 @@ public class ModelService {
                 return convertClassificationsToPrediction(predictor.predict(image), file, null, this.getId());
 
             } catch (TranslateException e) {
-                // TODO Auto-generated catch block
                 throw new HttpClientErrorException(HttpStatusCode.valueOf(400),
-                            "Error while loading model: " + criteria + " Message = " + e.getMessage());
+                            "Error during batch translation of file: " + criteria + " Message = " + e.getMessage());
             }
         }
 
@@ -541,9 +540,8 @@ public class ModelService {
                 return convertClassificationsToPrediction(predictor.predict(image), file, actualImpairmentValue, this.getId());
 
             } catch (TranslateException e) {
-                // TODO Auto-generated catch block
                 throw new HttpClientErrorException(HttpStatusCode.valueOf(400),
-                            "Error while loading model: " + criteria + " Message = " + e.getMessage());
+                            "Error during batch translation of file: " + criteria + " Message = " + e.getMessage());
             }
         }
 
