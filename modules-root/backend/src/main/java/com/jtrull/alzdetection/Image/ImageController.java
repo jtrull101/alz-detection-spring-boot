@@ -1,5 +1,7 @@
 package com.jtrull.alzdetection.Image;
 
+import java.util.List;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,6 +48,11 @@ public class ImageController {
     @GetMapping("/random/{impairment}")
     public ImagePrediction runPredictionForRandomImage(@PathVariable String impairment, @PathVariable Long modelId) {
         return this.imageService.runPredictionForRandomFromImpairmentCategory(impairment, modelId);
+    }
+
+    @GetMapping("/test")
+    public List<ImagePrediction> runPredictionForAllTestImages(@PathVariable Long modelId) {
+        return this.imageService.runPredictionForEveryTestFile(modelId);
     }
 
     @GetMapping("/get")

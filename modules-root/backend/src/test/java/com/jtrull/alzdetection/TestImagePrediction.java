@@ -278,7 +278,8 @@ public class TestImagePrediction {
     @Order(5)
     @RepeatedTest(TEST_INVOCATIONS)
     public void testDeletePrediction() throws Exception {
-        Optional<ImagePrediction> imageOpt = imageRepository.findAll().stream().findFirst();
+        Optional<ImagePrediction> imageOpt = imageRepository.findAll().stream()
+            .filter(i -> i.getAssociatedModel() == 1L).findFirst();
         if (imageOpt.isEmpty()) {
             throw new Exception("Unable to find an image in image repository");
         }

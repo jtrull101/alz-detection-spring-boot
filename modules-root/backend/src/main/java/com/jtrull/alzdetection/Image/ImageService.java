@@ -25,19 +25,9 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.jtrull.alzdetection.Model.ModelService;
+import com.jtrull.alzdetection.Model.ModelService.InMemoryModel;
 import com.jtrull.alzdetection.Prediction.ImpairmentEnum;
 
-import ai.djl.MalformedModelException;
-import ai.djl.inference.Predictor;
-import ai.djl.modality.Classifications;
-import ai.djl.modality.Classifications.Classification;
-import ai.djl.modality.cv.Image;
-import ai.djl.modality.cv.ImageFactory;
-import ai.djl.repository.zoo.Criteria;
-import ai.djl.repository.zoo.ModelNotFoundException;
-import ai.djl.repository.zoo.ModelZoo;
-import ai.djl.repository.zoo.ZooModel;
-import ai.djl.translate.TranslateException;
 import jakarta.annotation.PostConstruct;
 
 
@@ -105,12 +95,10 @@ public class ImageService {
         if (existingPrediction.isPresent()) return existingPrediction.get();
 
         // fetch model from model repo
-        if (!modelService.getInMemoryModels().containsKey(modelId)) {
-            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find model with Id: " + modelId);
-        }
-        Criteria<Image, Classifications> criteria = modelService.getInMemoryModels().get(modelId);
-
-        ImagePrediction prediction = runPredictionOnModel(modelId, criteria, destinationFile.toFile(), null);
+        ImagePrediction prediction = modelService.getInMemoryModels().stream()
+            .filter(m -> m.getId() == modelId)
+            .findAny()
+            .orElseThrow(() -> new RuntimeException()).predictOnModel(destinationFile.toFile(), null);
         synchronized (imageRepository) {
             imageRepository.save(prediction);
         }
@@ -124,12 +112,6 @@ public class ImageService {
      * @throws Exception
      */
     public ImagePrediction runPredictionForRandomImage(Long modelId) {
-        // fetch model from model repo
-        if (!modelService.getInMemoryModels().containsKey(modelId)) {
-            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find model with Id: " + modelId);         
-        }
-        Criteria<Image, Classifications> criteria = modelService.getInMemoryModels().get(modelId);
-
         // find random sample in test set
         Random generator = new Random();
         Object[] vals = testFiles.values().toArray();
@@ -145,11 +127,13 @@ public class ImageService {
         if (existingPrediction.isPresent()) return existingPrediction.get();
 
         // If image repository had no previously predicted data, run a prediction and save into the repository
-        ImagePrediction prediction = runPredictionOnModel(modelId, criteria, randomImage, categoryLabel);
+        ImagePrediction prediction = modelService.getInMemoryModels().stream()
+            .filter(m -> m.getId() == modelId)
+            .findAny()
+            .orElseThrow(() -> new RuntimeException()).predictOnModel(randomImage, categoryLabel);
         synchronized (imageRepository) {
             imageRepository.save(prediction);
         }
-        logger.debug("Added new image prediction: " + prediction + " to image database");
         return prediction;
     }
 
@@ -201,6 +185,27 @@ public class ImageService {
     }
 
     /**
+     * TODO
+     * 
+     * @param modelId
+     * @return
+     */
+    public List<ImagePrediction> runPredictionForEveryTestFile(long modelId) {
+        InMemoryModel model = modelService.getInMemoryModels().stream()
+                    .filter(m -> m.getId() == modelId)
+                    .findAny()
+                    .orElseThrow(() -> new RuntimeException());
+        
+        List<File> flattenedFiles = testFiles.values()
+            .stream()
+            .flatMap(List::stream)
+            .collect(Collectors.toList());
+        return model.batchPredict(flattenedFiles, null);
+        // return predictions;
+    }
+
+
+    /**
      * Given a specified Impairment category, run a prediction on the specified Tensorflow model. Return this prediction
      *  and the confidences. 
      * 
@@ -226,67 +231,15 @@ public class ImageService {
         if (existingPrediction.isPresent()) return existingPrediction.get();
 
         // if not in repository, run prediction and add to repository
-        if (!modelService.getInMemoryModels().containsKey(modelId)) {
-            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find model with Id: " + modelId);
-        }
-        Criteria<Image, Classifications> criteria = modelService.getInMemoryModels().get(modelId);
-        ImagePrediction prediction = runPredictionOnModel(modelId, criteria, randomImage, categoryLabel);
+        ImagePrediction prediction = modelService.getInMemoryModels().stream()
+            .filter(m -> m.getId() == modelId)
+            .findAny()
+            .orElseThrow(() -> new RuntimeException()).predictOnModel(randomImage, categoryLabel);
         synchronized (imageRepository) {
             imageRepository.save(prediction);
         }
         return prediction;
     }
-
-    /**
-     * Using DJL (deep java library found on GitHub) leverage tensorflow for predictions
-     * 
-     * @param bundle
-     * @param toPredict
-     * @return
-     */
-    private ImagePrediction runPredictionOnModel(Long modelId, Criteria<Image, Classifications> criteria, File toPredict, ImpairmentEnum actualImpairmentValue) {
-        Image image;
-        try {
-            image = ImageFactory.getInstance().fromFile(toPredict.toPath());
-        } catch (IOException e) {
-            throw new HttpClientErrorException (HttpStatusCode.valueOf(400), "Error while loading image " + toPredict.toPath() + " is it a valid image?");
-        }
-
-        // Load model into the 'ModelZoo' environment used by the Amazon DJL framework to run a prediction
-        Classifications result;
-        try (ZooModel<Image, Classifications> zooModel = ModelZoo.loadModel(criteria)) {
-            try (Predictor<Image,Classifications> predictor = zooModel.newPredictor()) {
-                try {
-                    result = predictor.predict(image);
-                    logger.info("Diagnose: {}", result);
-                } catch (TranslateException e) {
-                    throw new HttpClientErrorException (HttpStatusCode.valueOf(400), "Error while running prediction for image: " + image + ". Message = " + e.getMessage());
-                }
-            }
-
-        } catch (IOException | MalformedModelException e) {
-            throw new HttpClientErrorException (HttpStatusCode.valueOf(400), "Error while loading model: " + criteria + " Message = " + e.getMessage());
-        } catch (ModelNotFoundException e) {
-            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find model for criteria: " + criteria + " Message = " + e.getMessage());
-        }
-        
-        // Gather a map of confidences used to populate the ImagePrediction returned from this method
-        HashMap<ImpairmentEnum, Integer> confidences = new HashMap<>();
-        for (Classification item : result.items()) {
-            Optional<ImpairmentEnum> enumVal = ImpairmentEnum.fromString(item.getClassName());
-            confidences.put(enumVal.get(), (int) (item.getProbability() * 100));
-        }
-
-        // Return new ImagePrediction object
-        return new ImagePrediction(
-            toPredict.toPath().toString(), 
-            confidences.get(ImpairmentEnum.NO_IMPAIRMENT),
-            confidences.get(ImpairmentEnum.VERY_MILD_IMPAIRMENT),
-            confidences.get(ImpairmentEnum.MILD_IMPAIRMENT),
-            confidences.get(ImpairmentEnum.MODERATE_IMPAIRMENT),
-            actualImpairmentValue, 
-            modelId);
-    } 
 
     /**
      * Return the path where models will be stored, represented in some way by /resource/model
@@ -295,6 +248,10 @@ public class ImageService {
      */
     public String returnImagePath() {
         return getClass().getResource("/").getPath() + root;
+    }
+
+    public String testImagePath() {
+        return returnImagePath() + "/" + DATASET_NAME + "/test/";
     }
 
     /**
@@ -370,7 +327,7 @@ public class ImageService {
 
         // populate testFiles hashmap of all test images mapped to their corresponding categories
         List<File> impairmentCategories = null;
-        Path testDirPath = Paths.get(p + "/" + DATASET_NAME + "/test/");
+        Path testDirPath = Paths.get(testImagePath());
         try {
             impairmentCategories = Files.walk(testDirPath)
                     .filter(Files::isDirectory)
