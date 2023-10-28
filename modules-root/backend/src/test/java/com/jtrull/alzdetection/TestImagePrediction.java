@@ -352,14 +352,17 @@ public class TestImagePrediction {
             allModels = modelRepository.findAll();
 
             if (desiredId != null) {
-                return allModels.stream().filter(m -> m.getId() == desiredId).findFirst().get();
+                return allModels.stream()
+                    .filter(m -> m.getId() == desiredId)
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("Unable to pick model with Id: " + desiredId));
             }
 
             // pick a random model
             return allModels.stream()
                 .skip(new Random().nextInt(allModels.size()))
                 .findAny()
-                .orElseThrow(() -> new RuntimeException("Unable to pick random model"));
+                .orElseThrow(() -> new AssertionError("Unable to pick random model!"));
         }
     }
 

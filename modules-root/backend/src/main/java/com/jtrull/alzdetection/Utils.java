@@ -22,13 +22,6 @@ import org.springframework.web.client.HttpClientErrorException;
 
 import com.jtrull.alzdetection.Prediction.ImpairmentEnum;
 
-import ai.djl.modality.cv.Image;
-import ai.djl.ndarray.NDManager;
-import ai.djl.training.dataset.RandomAccessDataset;
-import ai.djl.training.dataset.Record;
-import ai.djl.translate.TranslateException;
-import ai.djl.util.Progress;
-
 @Component
 public class Utils {
     private static final Logger LOGGER = LoggerFactory.getLogger(Utils.class);
@@ -52,64 +45,6 @@ public class Utils {
      */
     public static Long generateIdFromPath(String path) {
         return UUID.nameUUIDFromBytes(path.getBytes()).getMostSignificantBits();
-    }
-
-
-
-    public class MRIImageDataset extends RandomAccessDataset {
-        private final List<Image> images;
-
-        private MRIImageDataset(Builder builder) {
-            super(builder);
-            this.images = builder.images;
-        }
-
-        @Override
-        public void prepare(Progress progress) throws IOException, TranslateException {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException("Unimplemented method 'prepare'");
-        }
-
-        @Override
-        public Record get(NDManager manager, long index) throws IOException {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException("Unimplemented method 'get'");
-        }
-
-        @Override
-        protected long availableSize() {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException("Unimplemented method 'availableSize'");
-        }
-
-        class Builder extends BaseBuilder<Builder> {
-            List<Image> images;
-
-            @Override
-            protected Builder self() {
-                return this;
-            }
-
-            MRIImageDataset build() throws IOException {
-                // get list of images
-
-
-                // try (Reader reader = Files.newBufferedReader(Paths.get(csvFilePath));
-                //     CSVParser csvParser =
-                //         new CSVParser(
-                //             reader,
-                //             CSVFormat.DEFAULT
-                //                 .builder()
-                //                 .setHeader("url", "isMalicious")
-                //                 .setSkipHeaderRecord(true)
-                //                 .setIgnoreHeaderCase(true)
-                //                 .setTrim(true)
-                //                 .build())) {
-                //     csvRecords = csvParser.getRecords();
-                // }
-                return new MRIImageDataset(this);
-            }
-        }
     }
 
      /**
@@ -280,4 +215,84 @@ public class Utils {
     public static Path getImageRoot() {
         return IMAGE_ROOT;
     }
+
+     // public class MRIImageDataset extends RandomAccessDataset {
+    //     private final List<MRIImage> images;
+
+    //     private MRIImageDataset(Builder builder) {
+    //         super(builder);
+    //         this.images = builder.images;
+    //     }
+
+    //     @Override
+    //     public void prepare(Progress progress) throws IOException, TranslateException {
+    //         // TODO Auto-generated method stub
+    //         throw new UnsupportedOperationException("Unimplemented method 'prepare'");
+    //     }
+
+    //     @Override
+    //     public Record get(NDManager manager, long index) throws IOException {
+    //         // TODO Auto-generated method stub
+    //         throw new UnsupportedOperationException("Unimplemented method 'get'");
+
+    //         MRIImage record = images.get(Math.toIntExact(index));
+    //         NDArray datum = manager.create(encode(record.getImg()));
+    //         NDArray label = manager.create(Float.parseFloat(record.getLabel()));
+    //         return new Record(new NDList(datum), new NDList(label));
+    //     }
+
+    //     @Override
+    //     protected long availableSize() {
+    //         return images.size();
+    //     }
+
+    //     class MRIImage {
+    //         private final Image img;
+    //         private final ImpairmentEnum label;
+            
+    //         MRIImage(Image img, ImpairmentEnum label) {
+    //             this.img = img;
+    //             this.label = label;
+    //         }
+
+    //         public Image getImg() {
+    //             return img;
+    //         }
+    //         public ImpairmentEnum getLabel() {
+    //             return label;
+    //         }
+    //     }
+
+    //     class Builder extends BaseBuilder<Builder> {
+    //         List<Image> images;
+
+    //         @Override
+    //         protected Builder self() {
+    //             return this;
+    //         }
+
+    //         MRIImageDataset build() throws IOException {
+    //             if (testFiles.size() == 0) { 
+    //                 initializeTestImages();
+    //             }
+
+    //             this.images = testFiles.values()
+    //                 .stream()
+    //                 .flatMap(List::stream)
+    //                 .map(f -> {
+    //                     try {
+    //                         return ImageFactory.getInstance().fromFile(f.toPath());
+    //                     } catch (IOException e) {
+    //                         //TOOD:
+    //                         throw new RuntimeException();
+    //                     }
+    //                 })
+    //                 .collect(Collectors.toList());
+
+                
+    //             return new MRIImageDataset(this);
+    //         }
+    //     }
+    // }
 }
+

@@ -7,12 +7,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
-import java.util.Queue;
 import java.util.stream.Collectors;
 
 import org.apache.commons.io.FilenameUtils;
@@ -27,30 +25,16 @@ import com.jtrull.alzdetection.Utils;
 import com.jtrull.alzdetection.Image.ImagePrediction;
 import com.jtrull.alzdetection.Image.ImageRepository;
 import com.jtrull.alzdetection.Prediction.ImpairmentEnum;
+import com.jtrull.alzdetection.exceptions.ModelNotFoundForIDException;
 
 import ai.djl.Application;
-import ai.djl.MalformedModelException;
-import ai.djl.inference.Predictor;
 import ai.djl.modality.Classifications;
 import ai.djl.modality.Classifications.Classification;
 import ai.djl.modality.cv.Image;
-import ai.djl.modality.cv.ImageFactory;
 import ai.djl.modality.cv.translator.ImageClassificationTranslator;
 import ai.djl.modality.cv.util.NDImageUtils;
-import ai.djl.ndarray.NDManager;
-import ai.djl.ndarray.types.Shape;
 import ai.djl.repository.zoo.Criteria;
-import ai.djl.repository.zoo.ModelNotFoundException;
-import ai.djl.repository.zoo.ModelZoo;
-import ai.djl.repository.zoo.ZooModel;
-import ai.djl.training.DefaultTrainingConfig;
-import ai.djl.training.Trainer;
-import ai.djl.training.listener.TrainingListener;
-import ai.djl.training.loss.Loss;
-import ai.djl.training.optimizer.Optimizer;
-import ai.djl.training.tracker.Tracker;
 import ai.djl.training.util.ProgressBar;
-import ai.djl.translate.TranslateException;
 import ai.djl.translate.Translator;
 import jakarta.annotation.PostConstruct;
 
@@ -72,6 +56,7 @@ public class ModelService {
         this.imageRepository = imageRepository;
         this.utils = utils;
     }
+
 
     /**
      * Invoked after the constructor, perform initialization operations including:
@@ -202,11 +187,21 @@ public class ModelService {
      * @return
      */
     public Model getModelById(Long modelId) {
-        Optional<Model> opt = modelRepository.findById(modelId);
-        if (opt.isEmpty()) {
-            throw new HttpClientErrorException(HttpStatusCode.valueOf(404), "Unable to find model with Id: " + modelId);
-        }
-        return opt.get();
+        return modelRepository.findById(modelId).stream()
+            .findAny()
+            .orElseThrow(() -> new ModelNotFoundForIDException(modelId));
+    }
+
+    /**
+     * TODO:
+     * @param modelId
+     * @return
+     */
+    public InMemoryModel getInMemoryModelById(Long modelId) {
+        return getInMemoryModels().stream()
+            .filter(m -> m.getId() == modelId)
+            .findAny()
+            .orElseThrow(() -> new ModelNotFoundForIDException(modelId));
     }
 
     /**
@@ -229,7 +224,7 @@ public class ModelService {
             throw new HttpClientErrorException(HttpStatusCode.valueOf(403), "Unable to delete default model");
         }
         if (modelRepository.findById(modelId).isEmpty()) {
-            throw new HttpClientErrorException(HttpStatusCode.valueOf(404), "Unable to find model with Id: " + modelId);
+            throw new ModelNotFoundForIDException(modelId);
         }
 
         try {
@@ -266,22 +261,11 @@ public class ModelService {
     public boolean deleteAllModels() {
         try {
             synchronized (inMemoryModels) {
-                // List<Entry<Long, Criteria<Image, Classifications>>> removable = inMemoryModels.entrySet().stream()
-                //         .filter(e -> e != null).filter(e -> e.getKey() != null)
-                //         .filter(e -> e.getKey() != 1)
-                //         .collect(Collectors.toList());
-
-                // for (Entry<Long, Criteria<Image, Classifications>> e : removable) {
-                //     inMemoryModels.remove(e.getKey(), e.getValue());
-                // }
-
-                List<InMemoryModel> _removable = inMemoryModels.stream()
-                        .filter(m -> m.getId() != 1)
-                        .collect(Collectors.toList());
-
-                for (InMemoryModel e : _removable) {
-                    inMemoryModels.remove(e);
-                }
+                List<InMemoryModel> removable = inMemoryModels.stream()
+                    .filter(m -> m.getId() != 1)
+                    .collect(Collectors.toList());
+                inMemoryModels.removeAll(removable);
+                
             }
 
             synchronized (modelRepository) {
@@ -406,7 +390,7 @@ public class ModelService {
      */
     public List<InMemoryModel> addModelToInMemoryModels(Model m) {
         Criteria<Image, Classifications> criteria = loadModelIntoTensorflow(m);
-        InMemoryModel inMemModel = new InMemoryModel(m.getId(), criteria);
+        InMemoryModel inMemModel = new InMemoryModel(this, m.getId(), criteria);
         synchronized (inMemoryModels) {
             inMemoryModels.add(inMemModel);
         }
@@ -416,34 +400,29 @@ public class ModelService {
         return inMemoryModels;
     }
 
-    private void trainModelOnTestData(InMemoryModel inMemModel) {
+    // private void trainModelOnTestData(InMemoryModel inMemModel) {
 
-        NDManager manager = NDManager.newBaseManager();
-        ai.djl.Model djlModel = inMemModel.loadedModel.getWrappedModel();
+    //     NDManager manager = NDManager.newBaseManager();
+    //     ai.djl.Model djlModel = inMemModel.loadedModel.getWrappedModel();
 
-        Loss l2loss = Loss.l2Loss();
-        Tracker lrt = Tracker.fixed(0.03f);
-        Optimizer sgd = Optimizer.sgd().setLearningRateTracker(lrt).build();
+    //     Loss l2loss = Loss.l2Loss();
+    //     Tracker lrt = Tracker.fixed(0.03f);
+    //     Optimizer sgd = Optimizer.sgd().setLearningRateTracker(lrt).build();
 
-        DefaultTrainingConfig config = new DefaultTrainingConfig(l2loss)
-            .optOptimizer(sgd) // Optimizer (loss function)
-            .optDevices(manager.getEngine().getDevices(1)) // single GPU
-            .addTrainingListeners(TrainingListener.Defaults.logging()); // Logging
+    //     DefaultTrainingConfig config = new DefaultTrainingConfig(l2loss)
+    //         .optOptimizer(sgd) // Optimizer (loss function)
+    //         .optDevices(manager.getEngine().getDevices(1)) // single GPU
+    //         .addTrainingListeners(TrainingListener.Defaults.logging()); // Logging
             
-        Trainer trainer = djlModel.newTrainer(config);
+    //     Trainer trainer = djlModel.newTrainer(config);
 
-        int batchSize = 32;
-        trainer.initialize(new Shape(batchSize, 2));
+    //     int batchSize = 32;
+    //     trainer.initialize(new Shape(batchSize, 2));
 
-        // ImageDataset testIter = 
+    //     // ImageDataset testIter = 
 
-        // EasyTrain.evaluateDataset(trainer, testIter);
-        
-
-
-    }
-
-    
+    //     // EasyTrain.evaluateDataset(trainer, testIter);
+    // }
 
     /**
      * Initialize the in-memory models by finding all Models in the ModelRepository
@@ -462,37 +441,7 @@ public class ModelService {
         return this.inMemoryModels;
     }
 
-    class PredictRequest {
-        private Image image;
-        private Thread caller;
-        private Classifications result;
-       
-        public PredictRequest(Image image, Thread caller) {
-            this.image = image;
-            this.caller = caller;
-        }
-        public Image getImage() {
-            return image;
-        }
-        public void setImage(Image image) {
-            this.image = image;
-        }
-        public Thread getCaller() {
-            return caller;
-        }
-        public void setCaller(Thread caller) {
-            this.caller = caller;
-        }
-        public Classifications getResult() {
-            return result;
-        }
-        public void setResult(Classifications result) {
-            this.result = result;
-        }
-        
-    }
-
-    private ImagePrediction convertClassificationsToPrediction(Classifications classifications, File file, ImpairmentEnum actualImpairmentValue, Long modelId) {
+    ImagePrediction convertClassificationsToPrediction(Classifications classifications, File file, ImpairmentEnum actualImpairmentValue, Long modelId) {
         // Gather a map of confidences used to populate the ImagePrediction returned from this method
         HashMap<ImpairmentEnum, Integer> confidences = new HashMap<>();
         for (Classification item : classifications.items()) {
@@ -509,112 +458,5 @@ public class ModelService {
             confidences.get(ImpairmentEnum.MODERATE_IMPAIRMENT),
             actualImpairmentValue, 
             modelId);
-    }
-
-    public class InMemoryModel {
-        private Long id;
-        private Criteria<Image, Classifications> criteria;
-        private ZooModel<Image, Classifications> loadedModel;
-        private Predictor<Image, Classifications> predictor;
-
-        Queue<PredictRequest> requests = new ArrayDeque<PredictRequest>();
-        boolean running = true;
-
-        public InMemoryModel(Long id, Criteria<Image, Classifications> criteria) {
-            this.id = id;
-            this.criteria = criteria;
-            try {
-                this.loadedModel = ModelZoo.loadModel(criteria);
-            } catch (IOException | MalformedModelException e) {
-                throw new HttpClientErrorException(HttpStatusCode.valueOf(400),
-                        "Error while loading model: " + criteria + " Message = " + e.getMessage());
-            } catch (ModelNotFoundException e) {
-                throw new HttpClientErrorException(HttpStatusCode.valueOf(404),
-                        "Unable to find model for criteria: " + criteria + " Message = " + e.getMessage());
-            }
-            this.predictor = this.loadedModel.newPredictor();
-        }
-
-        /**
-         * 
-         * @param file
-         * @return
-         */
-        public ImagePrediction predictOnModel(File file) {
-            Image image;
-            try {
-                image = ImageFactory.getInstance().fromFile(file.toPath());
-            } catch (IOException e) {
-                throw new HttpClientErrorException (HttpStatusCode.valueOf(400), "Error while loading image " + file.toPath() + " is it a valid image?");
-            }
-           try {
-                return convertClassificationsToPrediction(predictor.predict(image), file, null, this.getId());
-
-            } catch (TranslateException e) {
-                throw new HttpClientErrorException(HttpStatusCode.valueOf(400),
-                            "Error during batch translation of file: " + criteria + " Message = " + e.getMessage());
-            }
-        }
-
-        /**
-         * 
-         * @param file
-         * @param actualImpairmentValue
-         * @return
-         */
-        public ImagePrediction predictOnModel(File file, ImpairmentEnum actualImpairmentValue) {
-            Image image;
-            try {
-                image = ImageFactory.getInstance().fromFile(file.toPath());
-            } catch (IOException e) {
-                throw new HttpClientErrorException (HttpStatusCode.valueOf(400), "Error while loading image " + file.toPath() + " is it a valid image?");
-            }
-           try {
-                return convertClassificationsToPrediction(predictor.predict(image), file, actualImpairmentValue, this.getId());
-
-            } catch (TranslateException e) {
-                throw new HttpClientErrorException(HttpStatusCode.valueOf(400),
-                            "Error during batch translation of file: " + criteria + " Message = " + e.getMessage());
-            }
-        }
-
-        /**
-         * 
-         * @param files
-         * @param actualImpairmentValue
-         * @return
-         */
-        public List<ImagePrediction> batchPredict(List<File> files, ImpairmentEnum actualImpairmentValue) {
-            List<Image> images = files.stream().map(f -> {
-                        try {
-                            return ImageFactory.getInstance().fromFile(f.toPath());
-                        } catch (IOException e) {
-                            throw new HttpClientErrorException (HttpStatusCode.valueOf(400), "Error while loading batch of images " + files + " is it a valid image?");
-                        }
-                    }).collect(Collectors.toList());
-
-           try {
-                List<Classifications> classifications = predictor.batchPredict(images);
-                return classifications.stream()
-                    .map(c-> convertClassificationsToPrediction(c, files.get(classifications.indexOf(c)), actualImpairmentValue, this.getId()))
-                    .collect(Collectors.toList());
-            } catch (TranslateException e) {
-                throw new HttpClientErrorException(HttpStatusCode.valueOf(400),
-                            "Error during batch translation of files: " + criteria + " Message = " + e.getMessage());
-            }
-        }
-
-        public Long getId() {
-            return id;
-        }
-        public void setId(Long id) {
-            this.id = id;
-        }
-        public Criteria<Image, Classifications> getCriteria() {
-            return criteria;
-        }
-        public void setCriteria(Criteria<Image, Classifications> criteria) {
-            this.criteria = criteria;
-        }
     }
 }

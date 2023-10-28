@@ -32,6 +32,7 @@ import com.google.common.io.ByteStreams;
 import com.jtrull.alzdetection.Model.Model;
 import com.jtrull.alzdetection.Model.ModelRepository;
 import com.jtrull.alzdetection.Model.ModelService;
+import com.jtrull.alzdetection.exceptions.ModelNotFoundForIDException;
 
 import jakarta.servlet.ServletException;
 
@@ -251,7 +252,7 @@ public class TestModel {
 			Assert.assertTrue("status code did not match 404 as expected, found: " + httpException.getStatusCode(), 
 				httpException.getStatusCode().equals(HttpStatus.valueOf(404)));
 			Assert.assertTrue("status message was not as expected, found: " + httpException.getStatusCode(), 
-				httpException.getMessage().contains("Unable to find model with Id: " + invalidId));
+				httpException.getMessage().contains(ModelNotFoundForIDException.MESSAGE + invalidId));
 		}
 	}
 
@@ -306,7 +307,7 @@ public class TestModel {
 			Assert.assertTrue("status code did not match 404 as expected, found: " + httpException.getStatusCode(), 
 				httpException.getStatusCode().equals(HttpStatus.valueOf(404)));
 			Assert.assertTrue("status message was not as expected, found: " + httpException.getStatusCode(), 
-				httpException.getMessage().contains("Unable to find model with Id: " + invalidId));
+				httpException.getMessage().contains(ModelNotFoundForIDException.MESSAGE + invalidId));
 		}
 	}
 

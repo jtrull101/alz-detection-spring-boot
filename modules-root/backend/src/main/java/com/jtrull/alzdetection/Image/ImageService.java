@@ -21,8 +21,8 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.jtrull.alzdetection.Utils;
+import com.jtrull.alzdetection.Model.InMemoryModel;
 import com.jtrull.alzdetection.Model.ModelService;
-import com.jtrull.alzdetection.Model.ModelService.InMemoryModel;
 import com.jtrull.alzdetection.Prediction.ImpairmentEnum;
 
 import jakarta.annotation.PostConstruct;
@@ -87,10 +87,8 @@ public class ImageService {
         if (existingPrediction.isPresent()) return existingPrediction.get();
 
         // fetch model from model repo
-        ImagePrediction prediction = modelService.getInMemoryModels().stream()
-            .filter(m -> m.getId() == modelId)
-            .findAny()
-            .orElseThrow(() -> new RuntimeException()).predictOnModel(destinationFile.toFile(), null);
+        ImagePrediction prediction = modelService.getInMemoryModelById(modelId).predictOnModel(destinationFile.toFile(), null);
+
         synchronized (imageRepository) {
             imageRepository.save(prediction);
         }
@@ -119,10 +117,8 @@ public class ImageService {
         if (existingPrediction.isPresent()) return existingPrediction.get();
 
         // If image repository had no previously predicted data, run a prediction and save into the repository
-        ImagePrediction prediction = modelService.getInMemoryModels().stream()
-            .filter(m -> m.getId() == modelId)
-            .findAny()
-            .orElseThrow(() -> new RuntimeException()).predictOnModel(randomImage, categoryLabel);
+        ImagePrediction prediction = modelService.getInMemoryModelById(modelId).predictOnModel(randomImage, categoryLabel);
+
         synchronized (imageRepository) {
             imageRepository.save(prediction);
         }
@@ -183,17 +179,13 @@ public class ImageService {
      * @return
      */
     public List<ImagePrediction> runPredictionForEveryTestFile(long modelId) {
-        InMemoryModel model = modelService.getInMemoryModels().stream()
-                    .filter(m -> m.getId() == modelId)
-                    .findAny()
-                    .orElseThrow(() -> new RuntimeException());
+        InMemoryModel model = modelService.getInMemoryModelById(modelId);
         
         List<File> flattenedFiles = this.utils.getTestFiles().values()
             .stream()
             .flatMap(List::stream)
             .collect(Collectors.toList());
         return model.batchPredict(flattenedFiles, null);
-        // return predictions;
     }
 
 
@@ -223,10 +215,8 @@ public class ImageService {
         if (existingPrediction.isPresent()) return existingPrediction.get();
 
         // if not in repository, run prediction and add to repository
-        ImagePrediction prediction = modelService.getInMemoryModels().stream()
-            .filter(m -> m.getId() == modelId)
-            .findAny()
-            .orElseThrow(() -> new RuntimeException()).predictOnModel(randomImage, categoryLabel);
+        ImagePrediction prediction = modelService.getInMemoryModelById(modelId).predictOnModel(randomImage, categoryLabel);
+
         synchronized (imageRepository) {
             imageRepository.save(prediction);
         }
