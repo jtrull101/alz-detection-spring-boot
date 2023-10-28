@@ -85,7 +85,7 @@ public class TestImagePrediction {
     @RepeatedTest(TEST_INVOCATIONS)
 	public void testRandomPredictionFromCategory() throws Exception {
         for (ImpairmentEnum val : ImpairmentEnum.values()) {
-            MvcResult _return = mvc.perform(get(createPredictUrl(getModel(1L).getId()) + "/random/" + val.toString())
+            MvcResult _return = mvc.perform(get(createPredictUrl(getModel().getId()) + "/random/" + val.toString())
 				.contentType(MediaType.APPLICATION_JSON))
 				.andExpect(status().is2xxSuccessful())
                 .andReturn();
@@ -99,7 +99,7 @@ public class TestImagePrediction {
         String impairment = RandomStringUtils.random(5, true, true);
 
         try {
-            mvc.perform(get(createPredictUrl(getModel(1L).getId()) + "/random/" + impairment)
+            mvc.perform(get(createPredictUrl(getModel().getId()) + "/random/" + impairment)
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().is4xxClientError());
             fail("succeeded sending invalid impairment category when expected to fail");
@@ -125,7 +125,7 @@ public class TestImagePrediction {
         byte[] inputArray = Files.readAllBytes(Paths.get(path));
         MockMultipartFile mockMultipartFile = new MockMultipartFile("image", filename, mediaType.toString(), inputArray);
         
-        String url = createPredictUrl(getModel(1L).getId());
+        String url = createPredictUrl(getModel().getId());
         MvcResult _return = mvc.perform(MockMvcRequestBuilders.multipart(url)
                     .file(mockMultipartFile)
                     .contentType(mediaType))
@@ -184,7 +184,7 @@ public class TestImagePrediction {
             MediaType.APPLICATION_JSON.toString(), ByteStreams.toByteArray(fis));
 
 			try {
-				mvc.perform(MockMvcRequestBuilders.multipart(createPredictUrl(getModel(1L).getId()))
+				mvc.perform(MockMvcRequestBuilders.multipart(createPredictUrl(getModel().getId()))
 						.file(mockMultipartFile)
 						.contentType(MediaType.APPLICATION_JSON.toString()))
 						.andExpect(status().is4xxClientError());
@@ -274,13 +274,21 @@ public class TestImagePrediction {
         Assert.assertTrue("Failed during execution of concurrent tests", result.wasSuccessful());
     }
 
+    /**
+     * TODO:
+     * @throws Exception
+     */
     @Order(5)
     @RepeatedTest(TEST_INVOCATIONS)
     public void testDeletePrediction() throws Exception {
         Optional<ImagePrediction> imageOpt = imageRepository.findAll().stream()
             .filter(i -> i.getAssociatedModel() == 1L).findFirst();
         if (imageOpt.isEmpty()) {
-            throw new Exception("Unable to find an image in image repository");
+            String url = createPredictUrl(getModel(1L).getId());
+            mvc.perform(get(url + "/random")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().is2xxSuccessful());
+            imageOpt = imageRepository.findAll().stream().filter(i -> i.getAssociatedModel() == 1L).findFirst();
         }
         ImagePrediction initialImagePrediction = imageOpt.get();
 
@@ -294,6 +302,10 @@ public class TestImagePrediction {
         Assert.assertTrue("Result of delete request did not match expected true", Boolean.valueOf(content));
     }
 
+    /**
+     * TODO:
+     * @throws Exception
+     */
     @Order(5)
     @RepeatedTest(TEST_INVOCATIONS)
     public void testInvalidDeletePrediction() throws Exception {
