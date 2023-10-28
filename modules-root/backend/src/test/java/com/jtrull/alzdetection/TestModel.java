@@ -18,13 +18,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import org.springframework.web.client.RestClientResponseException;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -32,13 +30,15 @@ import com.google.common.io.ByteStreams;
 import com.jtrull.alzdetection.Model.Model;
 import com.jtrull.alzdetection.Model.ModelRepository;
 import com.jtrull.alzdetection.Model.ModelService;
+import com.jtrull.alzdetection.exceptions.model.InvalidModelFileException;
+import com.jtrull.alzdetection.exceptions.model.ModelNotFoundException;
 
 import jakarta.servlet.ServletException;
 
+import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.junit.jupiter.api.parallel.ExecutionMode.SAME_THREAD;
 
 import java.io.File;
@@ -59,6 +59,7 @@ public class TestModel {
     @Autowired private MockMvc mvc;
 	@Autowired private ModelRepository modelRepository;
 	@Autowired private ModelService modelService;
+	@Autowired private Utils utils;
 
     private static final String BASE_URL = "/api/v1/model";
 	private static final String LOAD_URL = BASE_URL + "/load";
@@ -132,20 +133,15 @@ public class TestModel {
 			MockMultipartFile mockMultipartFile = new MockMultipartFile("file", modelName, "application/zip", 
 					ByteStreams.toByteArray(InputStream.nullInputStream()));
 
-			try {
-				mvc.perform(MockMvcRequestBuilders.multipart(LOAD_URL)
-						.file(mockMultipartFile)
-						.contentType(MediaType.APPLICATION_JSON.toString()))
-						.andExpect(status().is4xxClientError());
-				fail("succeeded sending invalid model when expected to fail");
-
-			} catch (ServletException e) {
-				RestClientResponseException httpException = (RestClientResponseException) e.getRootCause();
-				Assert.assertTrue("status code did not match 400 as expected, found: " + httpException.getStatusCode(), 
-                	httpException.getStatusCode().equals(HttpStatus.valueOf(400)));
-				Assert.assertTrue("status message was not as expected, found: " + httpException.getStatusCode(), 
-					httpException.getMessage().contains("Failed to store empty file"));
-			}
+			mvc.perform(MockMvcRequestBuilders.multipart(LOAD_URL)
+					.file(mockMultipartFile)
+					.contentType(MediaType.APPLICATION_JSON.toString()))
+					.andExpect(status().is4xxClientError())
+					.andExpect(result -> assertTrue(result.getResolvedException() instanceof InvalidModelFileException))
+					.andExpect(result -> assertTrue("Unexpected message:" + result.getResolvedException().getMessage(), 
+						result.getResolvedException().getMessage().contains("Unable to create model for input")))
+					.andExpect(result -> assertTrue("Unexpected details:" + ((InvalidModelFileException) result.getResolvedException()).getDetails(),  
+						((InvalidModelFileException) result.getResolvedException()).getDetails().contains("Found empty file")));
 		} 
 	}
 
@@ -157,7 +153,7 @@ public class TestModel {
 	@Order(2)
 	@RepeatedTest(TEST_INVOCATIONS)
 	public void testLoadNonZipAsModel() throws Exception {
-		String path = modelService.returnModelPath();
+		String path = this.utils.returnModelPath();
 		String filepath = path + "/test.json";
 
 		JSONObject json = new JSONObject();
@@ -169,21 +165,14 @@ public class TestModel {
 
 		try (InputStream is = getClass().getResourceAsStream(filepath)) {
 			MockMultipartFile mockMultipartFile = new MockMultipartFile("file", "test.json", MediaType.APPLICATION_JSON.toString(), ByteStreams.toByteArray(fis));
-
-			try {
-				mvc.perform(MockMvcRequestBuilders.multipart(LOAD_URL)
-						.file(mockMultipartFile)
-						.contentType(MediaType.APPLICATION_JSON.toString()))
-						.andExpect(status().is4xxClientError());
-				fail("succeeded sending non zip file to load");
-
-			} catch (ServletException e) {
-				RestClientResponseException httpException = (RestClientResponseException) e.getRootCause();
-				Assert.assertTrue("status code did not match 415 as expected, found: " + httpException.getStatusCode(), 
-                	httpException.getStatusCode().equals(HttpStatus.valueOf(415)));
-				Assert.assertTrue("status message was not as expected, found: " + httpException.getStatusCode(), 
-					httpException.getMessage().contains("Unable to load model from file that is not a .zip"));
-			}
+			
+			mvc.perform(MockMvcRequestBuilders.multipart(LOAD_URL)
+					.file(mockMultipartFile)
+					.contentType(MediaType.APPLICATION_JSON.toString()))
+					.andExpect(status().is4xxClientError())
+					.andExpect(result -> assertTrue(result.getResolvedException() instanceof InvalidModelFileException))
+					.andExpect(result -> assertTrue("Unexpected message:" + result.getResolvedException().getMessage(), 
+						result.getResolvedException().getMessage().contains("Unable to create model for input")));
 		} 
 	}
 
@@ -239,19 +228,13 @@ public class TestModel {
 	@RepeatedTest(TEST_INVOCATIONS)
 	public void testGetModelInvalidId() throws Exception {
 		long invalidId = 2345234523452345L;
-		try {
-			mvc.perform(get(BASE_URL + ID_KEY + invalidId)
-				.contentType(MediaType.APPLICATION_JSON))
-				.andExpect(status().is4xxClientError());
-			fail("succeeded sending invalid modelId");
-
-		} catch (ServletException e) {
-			RestClientResponseException httpException = (RestClientResponseException) e.getRootCause();
-			Assert.assertTrue("status code did not match 404 as expected, found: " + httpException.getStatusCode(), 
-				httpException.getStatusCode().equals(HttpStatus.valueOf(404)));
-			Assert.assertTrue("status message was not as expected, found: " + httpException.getStatusCode(), 
-				httpException.getMessage().contains("Unable to find model with Id: " + invalidId));
-		}
+	
+		mvc.perform(get(BASE_URL + ID_KEY + invalidId)
+			.contentType(MediaType.APPLICATION_JSON))
+			.andExpect(status().is4xxClientError())
+			.andExpect(result -> assertTrue(result.getResolvedException() instanceof ModelNotFoundException))
+			.andExpect(result -> assertTrue(result.getResolvedException().getMessage().contains("search by ID for '" + invalidId + "'")));
+			
 	}
 
     /**
@@ -294,19 +277,11 @@ public class TestModel {
 	@RepeatedTest(TEST_INVOCATIONS)
 	public void testInvalidModelDelete() throws Exception {
 		long invalidId = 4892374923L;
-		try {
-			mvc.perform(delete(DELETE_URL + ID_KEY + invalidId)
-				.contentType(MediaType.APPLICATION_JSON))
-				.andExpect(status().is4xxClientError());
-			fail("succeeded sending invalid model delete when expected to fail");
-
-		} catch (ServletException e) {
-			RestClientResponseException httpException = (RestClientResponseException) e.getRootCause();
-			Assert.assertTrue("status code did not match 404 as expected, found: " + httpException.getStatusCode(), 
-				httpException.getStatusCode().equals(HttpStatus.valueOf(404)));
-			Assert.assertTrue("status message was not as expected, found: " + httpException.getStatusCode(), 
-				httpException.getMessage().contains("Unable to find model with Id: " + invalidId));
-		}
+		mvc.perform(delete(DELETE_URL + ID_KEY + invalidId)
+			.contentType(MediaType.APPLICATION_JSON))
+			.andExpect(status().is4xxClientError())
+			.andExpect(result -> assertTrue(result.getResolvedException() instanceof ModelNotFoundException))
+			.andExpect(result -> assertTrue(result.getResolvedException().getMessage().contains("search by ID for '" + invalidId + "'")));
 	}
 
 	/** 
@@ -322,11 +297,7 @@ public class TestModel {
 			fail("succeeded deleting default model when expected to fail");
 
 		} catch (ServletException e) {
-			RestClientResponseException httpException = (RestClientResponseException) e.getRootCause();
-			Assert.assertTrue("status code did not match 404 as expected, found: " + httpException.getStatusCode(), 
-				httpException.getStatusCode().equals(HttpStatus.valueOf(403)));
-			Assert.assertTrue("status message was not as expected, found: " + httpException.getStatusCode(), 
-				httpException.getMessage().contains("Unable to delete default model"));
+			Assert.assertTrue("Unexpected exception type returned!", e.getRootCause() instanceof UnsupportedOperationException);
 		}
 	}
 
