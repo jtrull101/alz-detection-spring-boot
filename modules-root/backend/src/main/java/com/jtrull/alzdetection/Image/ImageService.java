@@ -7,7 +7,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
@@ -15,15 +14,15 @@ import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.jtrull.alzdetection.Utils;
-import com.jtrull.alzdetection.Model.InMemoryModel;
 import com.jtrull.alzdetection.Model.ModelService;
 import com.jtrull.alzdetection.Prediction.ImpairmentEnum;
+import com.jtrull.alzdetection.exceptions.generic.FailedRequirementException;
+import com.jtrull.alzdetection.exceptions.predictions.PredictionFailureException;
+import com.jtrull.alzdetection.exceptions.predictions.PredictionNotFoundException;
 
 import jakarta.annotation.PostConstruct;
 
@@ -63,7 +62,7 @@ public class ImageService {
         Path destinationFile = null;
         try {
             if (file.isEmpty()) {
-                throw new HttpClientErrorException (HttpStatusCode.valueOf(400), "Failed to store empty file.");
+                throw new PredictionFailureException(file, "Failed to store empty file");
             }
             
             // TOOD: Uncomment if interested in not running the prediction if filenames are the same
@@ -78,8 +77,7 @@ public class ImageService {
                 Files.copy(inputStream, destinationFile, StandardCopyOption.REPLACE_EXISTING);
             }
         } catch (IOException e) {
-            throw new HttpClientErrorException (HttpStatusCode.valueOf(406), 
-                    "Failed to copy new image: " + file + " to required directory " + destinationFile + " message  = " + e.getMessage());
+            throw new FailedRequirementException(e, "Failed to copy new image: '" + file + "'' to required directory '" + destinationFile + "'");
         }
 
         // Check image repository for previous predictions with this image and model number
@@ -142,16 +140,12 @@ public class ImageService {
     }
 
      public ImagePrediction runGetPrediction(long predictionId, Long modelId) {
-        Optional<ImagePrediction> image = imageRepository.findById(predictionId);
-        if (image.isEmpty()) { 
-            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find prediction with Id: " + predictionId);
+        ImagePrediction image = imageRepository.findById(predictionId).orElseThrow(() -> 
+            new PredictionNotFoundException(predictionId));
+        if (image.getAssociatedModel() != modelId) {
+            throw new PredictionNotFoundException(predictionId, "Error with request, unable to find prediction for modelId '" + modelId + "'");
         }
-
-        if (image.get().getAssociatedModel() != modelId) {
-            throw new HttpClientErrorException (HttpStatusCode.valueOf(400), "Error with request, unable to find prediction for modelId " + modelId);
-        }
-
-        return image.get();
+        return image;
     }
 
     /**
@@ -162,13 +156,14 @@ public class ImageService {
      * @return
      */
     public boolean runDeletePrediction(long fileId, long modelId) {
-        Optional<ImagePrediction> image = imageRepository.findById(fileId);
-        if (image.isEmpty()) { 
-            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find prediction with Id: " + fileId);
-        }
+        ImagePrediction image = imageRepository.findById(fileId).orElseThrow(() -> 
+            new PredictionNotFoundException(fileId, "Unable to find prediction with prediction ID and model ID", 
+                String.valueOf(fileId), String.valueOf(modelId)));
+
         synchronized (imageRepository) {
-            imageRepository.delete(image.get());
+            imageRepository.delete(image);
         }
+
         return true;
     }
 
@@ -179,13 +174,12 @@ public class ImageService {
      * @return
      */
     public List<ImagePrediction> runPredictionForEveryTestFile(long modelId) {
-        InMemoryModel model = modelService.getInMemoryModelById(modelId);
-        
-        List<File> flattenedFiles = this.utils.getTestFiles().values()
-            .stream()
+        List<File> flattenedFiles = this.utils.getTestFiles().values().stream()
             .flatMap(List::stream)
             .collect(Collectors.toList());
-        return model.batchPredict(flattenedFiles, null);
+
+        return modelService.getInMemoryModelById(modelId)
+            .batchPredict(flattenedFiles, null);
     }
 
 
@@ -200,12 +194,7 @@ public class ImageService {
     public ImagePrediction runPredictionForRandomFromImpairmentCategory(String impairment, Long modelId) {
         
         // find random sample in test set for specific impairment category
-        Optional<ImpairmentEnum> opt = ImpairmentEnum.fromString(impairment);
-        if (opt.isEmpty()) { 
-            throw new HttpClientErrorException (HttpStatusCode.valueOf(400), 
-                 "Unable to parse category: " + impairment + ". Expected values=[" + Arrays.asList(ImpairmentEnum.asStrings().toArray()) + "]");
-        }
-        ImpairmentEnum categoryLabel = opt.get();
+        ImpairmentEnum categoryLabel = ImpairmentEnum.fromString(impairment);
         Random generator = new Random();
         List<File> images = this.utils.getTestFiles().get(categoryLabel);
         File randomImage = images.get(generator.nextInt(images.size()));

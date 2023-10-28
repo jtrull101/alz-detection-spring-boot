@@ -1,9 +1,10 @@
 package com.jtrull.alzdetection.Prediction;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import com.jtrull.alzdetection.exceptions.predictions.InvalidImpairmentCategoryException;
 
 public enum ImpairmentEnum {
     MILD_IMPAIRMENT("Mild Impairment"),
@@ -21,10 +22,11 @@ public enum ImpairmentEnum {
         return this.val;
     }
 
-    public static Optional<ImpairmentEnum> fromString(String val) {
+    public static ImpairmentEnum fromString(String val) {
         return Stream.of(values())
             .filter(ie -> ie.toString().equals(val))
-            .findFirst();
+            .findFirst()
+            .orElseThrow(() -> new InvalidImpairmentCategoryException(val));
     }
 
     public static List<String> asStrings() {

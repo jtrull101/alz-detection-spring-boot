@@ -10,22 +10,25 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.apache.commons.io.FilenameUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatusCode;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.jtrull.alzdetection.Utils;
 import com.jtrull.alzdetection.Image.ImagePrediction;
 import com.jtrull.alzdetection.Image.ImageRepository;
 import com.jtrull.alzdetection.Prediction.ImpairmentEnum;
-import com.jtrull.alzdetection.exceptions.ModelNotFoundForIDException;
+import com.jtrull.alzdetection.exceptions.generic.FailedRequirementException;
+import com.jtrull.alzdetection.exceptions.generic.UnexpectedDeleteErrException;
+import com.jtrull.alzdetection.exceptions.model.InvalidModelFileException;
+import com.jtrull.alzdetection.exceptions.model.ModelNotFoundException;
 
 import ai.djl.Application;
 import ai.djl.modality.Classifications;
@@ -71,8 +74,8 @@ public class ModelService {
         try {
             Files.createDirectories(Paths.get(this.utils.returnModelPath()));
         } catch (Exception ex) {
-            throw new HttpClientErrorException(HttpStatusCode.valueOf(409),
-                    "Could not create the directory where uploaded model files will be stored.");
+            throw new FailedRequirementException(ex, HttpStatus.CONFLICT, 
+                "Could not create the directory where uploaded model files will be stored.");
         }
 
         // load default model into DB
@@ -81,8 +84,6 @@ public class ModelService {
         // init the in-memory models
         initInMemoryModels();
     }
-
-    
 
     /**
      * Given a .zip MultipartFile as input, move this file to the
@@ -97,23 +98,20 @@ public class ModelService {
 
         // Error checks
         if (file.isEmpty()) {
-            throw new HttpClientErrorException(HttpStatusCode.valueOf(400), "Failed to store empty file.");
+            throw new InvalidModelFileException(file, "Found empty file");
         }
         if (!FilenameUtils.getExtension(file.getOriginalFilename()).equals("zip")) {
-            throw new HttpClientErrorException(HttpStatusCode.valueOf(415),
-                    "Unable to load model from file that is not a .zip");
+            throw new InvalidModelFileException(file);
         }
 
         int hashDir = file.getName().hashCode();
-        // Create directory to hold new model, constructed of a hash of the model's
-        // name.
+        // Create directory to hold new model, constructed of a hash of the model's name.
         // This assumption implies unique model zip names
         Path newPath = Paths.get(this.utils.returnModelPath() + "/" + hashDir);
         try {
             Files.createDirectories(newPath);
         } catch (IOException e) {
-            throw new HttpClientErrorException(HttpStatusCode.valueOf(406),
-                    "Unable to create new directory to store model at: " + newPath + " message  = " + e.getMessage());
+            throw new FailedRequirementException(e, "Unable to create new directory to store model at: " + newPath);
         }
 
         // Copy the model .zip to the resources directory
@@ -121,9 +119,7 @@ public class ModelService {
         try (InputStream inputStream = file.getInputStream()) {
             Files.copy(inputStream, destinationFile, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
-            throw new HttpClientErrorException(HttpStatusCode.valueOf(406),
-                    "Unable to move modle zip file '" + file.getName() + "' to destination: " + destinationFile
-                            + " message  = " + e.getMessage());
+            throw new FailedRequirementException(e,  "Unable to move model zip file '" + file.getName() + "' to destination: " + destinationFile);
         }
 
         // Find the model.zip in its subdirectory in the resources directory,
@@ -141,9 +137,11 @@ public class ModelService {
                 .findAny();
 
         if (found.isEmpty()) {
-            throw new HttpClientErrorException(HttpStatusCode.valueOf(404),
-                    "Unable to find model, ensure you are using a model with a unique name: "
-                            + resource.getAbsolutePath());
+            synchronized (modelRepository) {
+                modelRepository.delete(m);
+            }
+            throw new FailedRequirementException(new NoSuchElementException(resource.toString()),  
+                "Unable to find model after create! Unable to validate model was created successfully. Deleting model.");
         }
 
         // add model into memory with ID populated from repository
@@ -172,12 +170,9 @@ public class ModelService {
     public File findModelResourceInDir(String filename) {
         Optional<File> resource = getSavedModelInResourcesDir(filename);
         if (resource.isEmpty()) {
-            throw new HttpClientErrorException(HttpStatusCode.valueOf(404),
-                    "Unable to find model for filename: " + filename);
-        }
-        File f = resource.get();
-        logger.trace("returning found file: " + f);
-        return f;
+            throw new ModelNotFoundException(filename);
+        };
+        return resource.get();
     }
 
     /**
@@ -189,7 +184,8 @@ public class ModelService {
     public Model getModelById(Long modelId) {
         return modelRepository.findById(modelId).stream()
             .findAny()
-            .orElseThrow(() -> new ModelNotFoundForIDException(modelId));
+            .orElseThrow(() -> 
+                new ModelNotFoundException(modelId));
     }
 
     /**
@@ -201,7 +197,8 @@ public class ModelService {
         return getInMemoryModels().stream()
             .filter(m -> m.getId() == modelId)
             .findAny()
-            .orElseThrow(() -> new ModelNotFoundForIDException(modelId));
+            .orElseThrow(() -> 
+                new ModelNotFoundException(modelId));
     }
 
     /**
@@ -221,10 +218,10 @@ public class ModelService {
      */
     public boolean deleteModelById(Long modelId) {
         if (modelId == 1) {
-            throw new HttpClientErrorException(HttpStatusCode.valueOf(403), "Unable to delete default model");
+            throw new UnsupportedOperationException("Unable to delete default model");
         }
         if (modelRepository.findById(modelId).isEmpty()) {
-            throw new ModelNotFoundForIDException(modelId);
+            throw new ModelNotFoundException(modelId);
         }
 
         try {
@@ -247,8 +244,7 @@ public class ModelService {
             }
 
         } catch (Exception e) {
-            throw new HttpClientErrorException(HttpStatusCode.valueOf(500),
-                    "Error occurred during deletion of model with Id:" + modelId + ". message = " + e.getMessage());
+            throw new UnexpectedDeleteErrException(e, "Error occurred during deletion of model with Id: '" + modelId + "'");
         }
         return true;
     }
@@ -275,8 +271,7 @@ public class ModelService {
                 modelRepository.deleteAllInBatch(removable);
             }
         } catch (Exception e) {
-            throw new HttpClientErrorException(HttpStatusCode.valueOf(500),
-                    "Error occurred during deletion of all models. e = " + e);
+            throw new UnexpectedDeleteErrException(e, "Error occurred during deletion of all non-default models");
         }
         return true;
     }
@@ -327,19 +322,14 @@ public class ModelService {
      */
     private Optional<File> returnFileFromPath(String filename, String path) {
         try {
-            logger.info("searching for files in path: " + path);
-            Optional<File> opt = Files.walk(Paths.get(path))
+            return Files.walk(Paths.get(path))
                     .filter(Files::isRegularFile)
                     .filter(r -> r.toFile().getName().equals(filename))
                     .map(x -> x.toFile())
                     .findFirst();
-            logger.info("found files: " + opt);
-            return opt;
 
         } catch (IOException e) {
-            throw new HttpClientErrorException(HttpStatusCode.valueOf(409),
-                    "Error while traversing path '" + path + "' to find model with name '" + filename + "'. message = "
-                            + e.getMessage());
+            throw new FailedRequirementException(e, "Error while traversing path '" + path + "' to find model with name '" + filename + "'");
         }
     }
 
@@ -351,30 +341,22 @@ public class ModelService {
      */
     public Optional<File> getSavedModelInResourcesDir(String filename) {
         String path = this.utils.returnModelPath();
-        logger.info("Running getResource for path: " + path);
         try {
             Optional<File> defaultModelInBasePath = returnFileFromPath(filename, path);
             if (defaultModelInBasePath.isPresent()) {
-                logger.info("found default model: " + defaultModelInBasePath.get().getAbsolutePath());
                 return defaultModelInBasePath;
             }
             // find all files
-            Optional<Optional<File>> f = Files.walk(Paths.get(path))
+            return Files.walk(Paths.get(path))
                     .filter(Files::isDirectory)
                     .map(x -> x.toFile())
                     .map(x -> returnFileFromPath(filename, x.getAbsolutePath()))
-                    .findFirst();
-
-            if (f.isPresent() && f.get().isPresent()) {
-                return f.get();
-            }
+                    .findFirst().get();
 
         } catch (IOException e) {
-            throw new HttpClientErrorException(HttpStatusCode.valueOf(409),
-                    "Error while traversing path '" + path + "' to find model with name '" + filename + "'. message = "
-                            + e.getMessage());
+            throw new FailedRequirementException(e, 
+                "Error while traversing path '" + path + "' to find model in resources directory with name '" + filename + "'");
         }
-        return Optional.empty();
     }
 
     /**
@@ -397,6 +379,7 @@ public class ModelService {
 
         // TODO:
         // trainModelOnTestData(inMemModel);
+
         return inMemoryModels;
     }
 
@@ -445,8 +428,8 @@ public class ModelService {
         // Gather a map of confidences used to populate the ImagePrediction returned from this method
         HashMap<ImpairmentEnum, Integer> confidences = new HashMap<>();
         for (Classification item : classifications.items()) {
-            Optional<ImpairmentEnum> enumVal = ImpairmentEnum.fromString(item.getClassName());
-            confidences.put(enumVal.get(), (int) (item.getProbability() * 100));
+            ImpairmentEnum enumVal = ImpairmentEnum.fromString(item.getClassName());
+            confidences.put(enumVal, (int) (item.getProbability() * 100));
         }
 
         // Return new ImagePrediction object

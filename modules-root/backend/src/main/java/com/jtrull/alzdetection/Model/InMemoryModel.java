@@ -5,11 +5,10 @@ import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.springframework.http.HttpStatusCode;
-import org.springframework.web.client.HttpClientErrorException;
-
 import com.jtrull.alzdetection.Image.ImagePrediction;
 import com.jtrull.alzdetection.Prediction.ImpairmentEnum;
+import com.jtrull.alzdetection.exceptions.model.InvalidModelFileException;
+import com.jtrull.alzdetection.exceptions.predictions.PredictionFailureException;
 
 import ai.djl.MalformedModelException;
 import ai.djl.inference.Predictor;
@@ -46,11 +45,10 @@ public class InMemoryModel {
         try {
             this.loadedModel = ModelZoo.loadModel(criteria);
         } catch (IOException | MalformedModelException e) {
-            throw new HttpClientErrorException(HttpStatusCode.valueOf(400),
-                    "Error while loading model: " + criteria + " Message = " + e.getMessage());
+            throw new InvalidModelFileException(criteria, "Error while loading model: '" + criteria + "'");
+            
         } catch (ModelNotFoundException e) {
-            throw new HttpClientErrorException(HttpStatusCode.valueOf(404),
-                    "Unable to find model for criteria: " + criteria + " Message = " + e.getMessage());
+            throw new InvalidModelFileException(criteria, "Unable to find valid model for criteria: '" + criteria + "'");
         }
         this.predictor = this.loadedModel.newPredictor();
     }
@@ -64,7 +62,7 @@ public class InMemoryModel {
         try {
             return ImageFactory.getInstance().fromFile(file.toPath());
         } catch (IOException e) {
-            throw new HttpClientErrorException (HttpStatusCode.valueOf(400), "Error while loading image " + file.toPath() + " is it a valid image?");
+            throw new PredictionFailureException(file, "Error while loading image " + file.toPath() + " is it a valid image?");
         }
     }
 
@@ -77,10 +75,8 @@ public class InMemoryModel {
         Image image = fileToImage(file);
         try {
             return this.modelService.convertClassificationsToPrediction(predictor.predict(image), file, null, this.getId());
-
         } catch (TranslateException e) {
-            throw new HttpClientErrorException(HttpStatusCode.valueOf(400),
-                        "Error during batch translation of file: " + criteria + " Message = " + e.getMessage());
+            throw new PredictionFailureException(file, "Error during translation of file: '" + criteria + "'");
         }
     }
 
@@ -94,10 +90,8 @@ public class InMemoryModel {
         Image image = fileToImage(file);
         try {
             return this.modelService.convertClassificationsToPrediction(predictor.predict(image), file, actualImpairmentValue, this.getId());
-
         } catch (TranslateException e) {
-            throw new HttpClientErrorException(HttpStatusCode.valueOf(400),
-                        "Error during batch translation of file: " + criteria + " Message = " + e.getMessage());
+            throw new PredictionFailureException(file, "Error during translation of file: '" + criteria + "'");
         }
     }
 
@@ -118,8 +112,7 @@ public class InMemoryModel {
                 .map(c-> this.modelService.convertClassificationsToPrediction(c, files.get(classifications.indexOf(c)), actualImpairmentValue, this.getId()))
                 .collect(Collectors.toList());
         } catch (TranslateException e) {
-            throw new HttpClientErrorException(HttpStatusCode.valueOf(400),
-                        "Error during batch translation of files: " + criteria + " Message = " + e.getMessage());
+            throw new PredictionFailureException(files, "Error during batch translation of files: '" + criteria + "'");
         }
     }
 

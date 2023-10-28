@@ -15,13 +15,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import org.springframework.web.client.RestClientResponseException;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -32,10 +30,13 @@ import com.jtrull.alzdetection.Model.Model;
 import com.jtrull.alzdetection.Model.ModelRepository;
 import com.jtrull.alzdetection.Model.ModelService;
 import com.jtrull.alzdetection.Prediction.ImpairmentEnum;
+import com.jtrull.alzdetection.exceptions.predictions.InvalidImpairmentCategoryException;
+import com.jtrull.alzdetection.exceptions.predictions.PredictionFailureException;
+import com.jtrull.alzdetection.exceptions.predictions.PredictionNotFoundException;
 
-import jakarta.servlet.ServletException;
-
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -69,7 +70,10 @@ public class TestImagePrediction {
     private static final int TEST_INVOCATIONS = AlzDetectionApplicationTests.TEST_INVOCATIONS;
     private static final ObjectMapper MAPPER = AlzDetectionApplicationTests.MAPPER;
 
-
+    /**
+     * 
+     * @throws Exception
+     */
 	@Order(1)
     @RepeatedTest(TEST_INVOCATIONS)
 	public void testRandomPrediction() throws Exception {
@@ -81,6 +85,10 @@ public class TestImagePrediction {
         validatePrediction(_return);
 	}
 
+    /**
+     * 
+     * @throws Exception
+     */
 	@Order(1)
     @RepeatedTest(TEST_INVOCATIONS)
 	public void testRandomPredictionFromCategory() throws Exception {
@@ -98,21 +106,20 @@ public class TestImagePrediction {
 	public void testRandomPredictionFromInvalidCategory() throws Exception {
         String impairment = RandomStringUtils.random(5, true, true);
 
-        try {
-            mvc.perform(get(createPredictUrl(getModel().getId()) + "/random/" + impairment)
-                .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().is4xxClientError());
-            fail("succeeded sending invalid impairment category when expected to fail");
+        mvc.perform(get(createPredictUrl(getModel().getId()) + "/random/" + impairment)
+            .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().is4xxClientError())
+            .andExpect(result -> assertTrue("Unexpected exception type!", 
+                result.getResolvedException() instanceof InvalidImpairmentCategoryException))
+            .andExpect(result -> assertTrue("Unexpected message:" + result.getResolvedException().getMessage(), 
+                result.getResolvedException().getMessage().contains(InvalidImpairmentCategoryException.MESSAGE)));
 
-        } catch (ServletException e) {
-            RestClientResponseException httpException = (RestClientResponseException) e.getRootCause();       
-            Assert.assertTrue("status code did not match 400 as expected, found: " + httpException.getStatusCode(), 
-                httpException.getStatusCode().equals(HttpStatus.valueOf(400)));
-            Assert.assertTrue("status message was not as expected, found: " + httpException.getStatusCode(), 
-                httpException.getMessage().contains("Unable to parse category: " + impairment + ". Expected values=[" + Arrays.asList(ImpairmentEnum.asStrings().toArray()) + "]"));
-        }
 	}
 
+    /**
+     * 
+     * @throws Exception
+     */
 	@Order(2)
     @RepeatedTest(TEST_INVOCATIONS)
 	public void testPredictionFromFile() throws Exception {
@@ -137,10 +144,14 @@ public class TestImagePrediction {
         ImagePrediction prediction = MAPPER.readValue(content, ImagePrediction.class);
 
         // Assert if a picture is passed in that we have the known predictions for, the predictions will match
-        Assert.assertEquals("Found not matching impairment level",prediction.getConf_NoImpairment(),initialImagePrediction.getConf_NoImpairment());
-        Assert.assertEquals("Found not matching impairment level",prediction.getConf_VeryMildImpairment(),initialImagePrediction.getConf_VeryMildImpairment());
-        Assert.assertEquals("Found not matching impairment level",prediction.getConf_MildImpairment(),initialImagePrediction.getConf_MildImpairment());
-        Assert.assertEquals("Found not matching impairment level",prediction.getConf_ModerateImpairment(),initialImagePrediction.getConf_ModerateImpairment());
+        Assert.assertEquals("Found not matching impairment level",
+            prediction.getConf_NoImpairment(),initialImagePrediction.getConf_NoImpairment());
+        Assert.assertEquals("Found not matching impairment level",
+            prediction.getConf_VeryMildImpairment(),initialImagePrediction.getConf_VeryMildImpairment());
+        Assert.assertEquals("Found not matching impairment level",
+            prediction.getConf_MildImpairment(),initialImagePrediction.getConf_MildImpairment());
+        Assert.assertEquals("Found not matching impairment level",
+            prediction.getConf_ModerateImpairment(),initialImagePrediction.getConf_ModerateImpairment());
 	}
 
     /**
@@ -166,6 +177,10 @@ public class TestImagePrediction {
     }
 
 
+    /**
+     * 
+     * @throws Exception
+     */
 	@Order(2)
     @RepeatedTest(TEST_INVOCATIONS)
     public void testPredictionFromInvalidFile() throws Exception {
@@ -183,23 +198,21 @@ public class TestImagePrediction {
 			MockMultipartFile mockMultipartFile = new MockMultipartFile("image", "test.json", 
             MediaType.APPLICATION_JSON.toString(), ByteStreams.toByteArray(fis));
 
-			try {
-				mvc.perform(MockMvcRequestBuilders.multipart(createPredictUrl(getModel().getId()))
-						.file(mockMultipartFile)
-						.contentType(MediaType.APPLICATION_JSON.toString()))
-						.andExpect(status().is4xxClientError());
-                fail("succeeded sending invalid image when expected to fail");
-
-			} catch (ServletException e) {
-				RestClientResponseException httpException = (RestClientResponseException) e.getRootCause();
-                Assert.assertTrue("status code did not match 400 as expected, found: " + httpException.getStatusCode(), 
-                    httpException.getStatusCode().equals(HttpStatus.valueOf(400)));
-                Assert.assertTrue("status message was not as expected, found: " + httpException.getStatusCode(), 
-                    httpException.getMessage().contains("is it a valid image?"));
-			}
+            mvc.perform(MockMvcRequestBuilders.multipart(createPredictUrl(getModel().getId()))
+                    .file(mockMultipartFile)
+                    .contentType(MediaType.APPLICATION_JSON.toString()))
+                    .andExpect(status().is4xxClientError())
+                    .andExpect(result -> assertTrue("Unexpected exception type!", 
+                        result.getResolvedException() instanceof PredictionFailureException))
+                    .andExpect(result -> assertTrue("Unexpected message:" + result.getResolvedException().getMessage(), 
+                        result.getResolvedException().getMessage().contains(PredictionFailureException.MESSAGE)));
 		}
     }
 
+    /**
+     * 
+     * @throws Exception
+     */
     @Order(3)
     @RepeatedTest(TEST_INVOCATIONS)
     public void testGetPrediction() throws Exception {
@@ -210,54 +223,54 @@ public class TestImagePrediction {
                 .andExpect(status().isOk())
                 .andReturn();
         String content = _return.getResponse().getContentAsString();
-        Assert.assertNotNull("Unable to read content from result of prediction GET request to URL:" + url, content);
+        assertNotNull("Unable to read content from result of prediction GET request to URL:" + url, content);
         ImagePrediction prediction = MAPPER.readValue(content, ImagePrediction.class);
-        Assert.assertNotNull("Unable to marshall prediction object from content:" + content, prediction);
+        assertNotNull("Unable to marshall prediction object from content:" + content, prediction);
         // properties ignored by json 
         initialPrediction.setAssociatedModel(null);
-        Assert.assertEquals("Prediction after GET does not match prediction from repository", initialPrediction, prediction);
+        assertEquals("Prediction after GET does not match prediction from repository", initialPrediction, prediction);
     }
 
+    /**
+     * 
+     * @throws Exception
+     */
     @Order(3)
     @RepeatedTest(TEST_INVOCATIONS)
     public void testGetInvalidPredictionId() throws Exception {
         ImagePrediction initialPrediction = getInitialImagePrediction();
         long invalidId = 2345234523452345L;
         String url = createGetPredictionUrl(initialPrediction.getAssociatedModel(), invalidId);
-        try {
-            mvc.perform(get(url)
-                .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().is4xxClientError());
-            fail("succeeded getting prediction with invalid Id when expected to fail");
-
-        } catch (ServletException e) {
-            RestClientResponseException httpException = (RestClientResponseException) e.getRootCause();
-            Assert.assertTrue("status code did not match 404 as expected, found: " + httpException.getStatusCode(), 
-                httpException.getStatusCode().equals(HttpStatus.valueOf(404)));
-            Assert.assertTrue("status message was not as expected, found: " + httpException.getStatusCode(), 
-                httpException.getMessage().contains("Unable to find prediction with Id: " + invalidId));
-        }
+       
+        mvc.perform(get(url)
+            .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().is4xxClientError())
+            .andExpect(result -> assertTrue("Unexpected exception type!", 
+                result.getResolvedException() instanceof PredictionNotFoundException))
+            .andExpect(result -> assertTrue("Unexpected message:" + result.getResolvedException().getMessage(), 
+                result.getResolvedException().getMessage().contains(PredictionNotFoundException.MESSAGE)));
+        
     }
 
+    /**
+     * 
+     * @throws Exception
+     */
     @Order(3)
     @RepeatedTest(TEST_INVOCATIONS)
     public void testGetInvalidModelIdForPrediction() throws Exception {
         ImagePrediction initialPrediction = getInitialImagePrediction();
         long invalidId = 2345234523452345L;
         String url = createGetPredictionUrl(invalidId, initialPrediction.getId());
-        try {
+       
             mvc.perform(get(url)
                 .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().is4xxClientError());
-            fail("succeeded getting prediction with invalid model Id expected to fail");
-
-        } catch (ServletException e) {
-            RestClientResponseException httpException = (RestClientResponseException) e.getRootCause();
-            Assert.assertTrue("status code did not match 400 as expected, found: " + httpException.getStatusCode(), 
-                httpException.getStatusCode().equals(HttpStatus.valueOf(400)));
-            Assert.assertTrue("status message was not as expected, found: " + httpException.getStatusCode(), 
-                httpException.getMessage().contains("Error with request, unable to find prediction for modelId " + invalidId));
-        }
+                .andExpect(status().is4xxClientError())
+                .andExpect(result -> assertTrue("Unexpected exception type!", 
+                    result.getResolvedException() instanceof PredictionNotFoundException))
+                .andExpect(result -> assertTrue("Unexpected message:" + result.getResolvedException().getMessage(), 
+                    result.getResolvedException().getMessage().contains(PredictionNotFoundException.MESSAGE)));
+         
     }
     
 
@@ -310,19 +323,13 @@ public class TestImagePrediction {
     @RepeatedTest(TEST_INVOCATIONS)
     public void testInvalidDeletePrediction() throws Exception {
         long invalidId = 2345234523452345L;
-        try {
-            mvc.perform(delete(createPredictUrl(getModel().getId()) + "/delete" + ID_KEY + invalidId)
-                .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().is4xxClientError());
-            fail("succeeded deleting invalid image when expected to fail");
-
-        } catch (ServletException e) {
-            RestClientResponseException httpException = (RestClientResponseException) e.getRootCause();
-            Assert.assertTrue("status code did not match 404 as expected, found: " + httpException.getStatusCode(), 
-                httpException.getStatusCode().equals(HttpStatus.valueOf(404)));
-            Assert.assertTrue("status message was not as expected, found: " + httpException.getStatusCode(), 
-                httpException.getMessage().contains("Unable to find prediction with Id: " + invalidId));
-        }
+        mvc.perform(delete(createPredictUrl(getModel().getId()) + "/delete" + ID_KEY + invalidId)
+            .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().is4xxClientError())
+            .andExpect(result -> assertTrue("Unexpected exception type!", 
+                result.getResolvedException() instanceof PredictionNotFoundException))
+            .andExpect(result -> assertTrue("Unexpected message:" + result.getResolvedException().getMessage(), 
+                result.getResolvedException().getMessage().contains(PredictionNotFoundException.MESSAGE)));
     }
 
     private String createPredictUrl(Long modelId) {
@@ -366,6 +373,11 @@ public class TestImagePrediction {
         }
     }
 
+    /**
+     * 
+     * @param _return
+     * @throws UnsupportedEncodingException
+     */
     public void validatePrediction(MvcResult _return) throws UnsupportedEncodingException {
         String content = _return.getResponse().getContentAsString();
         Assert.assertNotNull("Unable to find ImagePrediction object after random prediction request", content);

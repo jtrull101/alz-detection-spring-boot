@@ -8,7 +8,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Optional;
+import java.util.NoSuchElementException;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
@@ -16,11 +16,10 @@ import java.util.zip.ZipInputStream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.HttpClientErrorException;
 
 import com.jtrull.alzdetection.Prediction.ImpairmentEnum;
+import com.jtrull.alzdetection.exceptions.generic.FailedRequirementException;
 
 @Component
 public class Utils {
@@ -79,7 +78,8 @@ public class Utils {
         try {
             p = Files.createDirectories(Paths.get(returnImagePath()));
         } catch (Exception ex) {
-            throw new HttpClientErrorException (HttpStatusCode.valueOf(409), "Could not create the directory where uploaded model files will be stored.");
+            throw new FailedRequirementException(ex, 
+                "Could not create the directory where uploaded model files will be stored.");
         }
 
         // Find the Zipped dataset and unzip if found
@@ -92,7 +92,7 @@ public class Utils {
                     .map(x -> x.toFile())
                     .collect(Collectors.toList());
         } catch (IOException e) {
-            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find dataset with name '" + DATASET_NAME + ARCHIVE_FORMAT + "'. message = " + e.getMessage());
+            throw new FailedRequirementException(e, "Unable to find dataset with name '" + DATASET_NAME + ARCHIVE_FORMAT + "'");
         }
 
         LOGGER.trace("found zipped combined dataset directory: " + foundZipFiles);
@@ -108,7 +108,6 @@ public class Utils {
                     // create directories for nested zip
                     if (entry.isDirectory()) {
                         if (!toPath.toFile().exists()) {
-                            LOGGER.trace("creating required subdirectory: " + toPath);
                             Files.createDirectory(toPath);
                         }
                     } else {
@@ -118,26 +117,25 @@ public class Utils {
                     }
                 }
             } catch (IOException e) {
-                throw new HttpClientErrorException (HttpStatusCode.valueOf(406), "Error while decompressing dataset archive. message = " + e.getMessage());
+                throw new FailedRequirementException(e, "Error while decompressing dataset archive");
             }
         }
 
         // Now the contents have been unzipped. Search for the uncompressed dataset
-        Optional<File> opt = Optional.empty();
+        File foundCombinedDatasetDir;
         try {
-            opt = Files.walk(p)
+            foundCombinedDatasetDir = Files.walk(p)
                     .filter(Files::isDirectory)
                     .filter(r -> r.getFileName().toString().contains(DATASET_NAME))
                     .map(x -> x.toFile())
-                    .findFirst();
+                    .findFirst()
+                    .orElseThrow(() -> 
+                        new FailedRequirementException(new NoSuchElementException(), "Unable to find unzipped dataset with name '" + DATASET_NAME + "'"));
+
         } catch (IOException e) {
-            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find unzipped dataset with name '" + DATASET_NAME + "'. message = " + e.getMessage());
-        }
-        if (opt.isEmpty()) {
-            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find Combined Dataset directory after unzipping. Check if " + DATASET_NAME + " exists at location: " + p);
+            throw new FailedRequirementException(e, "Unable to find unzipped dataset with name '" + DATASET_NAME + "'");
         }
 
-        File foundCombinedDatasetDir = opt.get();
         LOGGER.trace("found unzipped combined dataset directory: " + foundCombinedDatasetDir);
 
         // populate testFiles hashmap of all test images mapped to their corresponding categories
@@ -150,10 +148,7 @@ public class Utils {
                     .collect(Collectors.toList());
 
         } catch (IOException e) {
-            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Error while finding /test directory at location: " + testDirPath);
-        }
-        if (impairmentCategories == null) {
-            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find impairment category subdirectories in dataset at location: " + testDirPath);
+            throw new FailedRequirementException(e, "Error while finding /test directory at location: '" + testDirPath + "'");
         }
 
         for (File f : impairmentCategories) {
@@ -161,11 +156,7 @@ public class Utils {
             if (name.equals("test")) continue; // exclude parent directory
             
             LOGGER.trace("processing potential impairment category: " + name);
-            Optional<ImpairmentEnum> category = ImpairmentEnum.fromString(name);
-            if (category.isEmpty()) {
-                throw new HttpClientErrorException (HttpStatusCode.valueOf(406), "Error while determining ImpairmentEnum category from directory name: " + name);
-            }
-
+            ImpairmentEnum category = ImpairmentEnum.fromString(name);
             List<File> images = new ArrayList<>();
             try {
                 images = Files.walk(f.toPath())
@@ -173,13 +164,14 @@ public class Utils {
                         .filter(r -> r.getFileName().toString().contains(IMAGE_TYPE))
                         .map(x -> x.toFile())
                         .collect(Collectors.toList());
+
             } catch (IOException e) {
-                throw new HttpClientErrorException (HttpStatusCode.valueOf(400), "Error while gathering images from category " + name);
+                throw new FailedRequirementException(e, "Error while gathering images from category " + name);
             }
 
-            if ((testFiles.containsKey(category.get()) && testFiles.get(category.get()).size() < images.size()) || !testFiles.containsKey(category.get())) {
-                LOGGER.info("adding " + images.size() + " images to category: " + category.get());
-                testFiles.put(category.get(), images);
+            if ((testFiles.containsKey(category) && testFiles.get(category).size() < images.size()) || !testFiles.containsKey(category)) {
+                LOGGER.info("adding " + images.size() + " images to category: " + category);
+                testFiles.put(category, images);
             }
         }
     }
