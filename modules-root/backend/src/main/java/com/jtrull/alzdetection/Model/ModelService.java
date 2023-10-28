@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.jtrull.alzdetection.Utils;
 import com.jtrull.alzdetection.Image.ImagePrediction;
 import com.jtrull.alzdetection.Image.ImageRepository;
 import com.jtrull.alzdetection.Prediction.ImpairmentEnum;
@@ -36,10 +37,18 @@ import ai.djl.modality.cv.Image;
 import ai.djl.modality.cv.ImageFactory;
 import ai.djl.modality.cv.translator.ImageClassificationTranslator;
 import ai.djl.modality.cv.util.NDImageUtils;
+import ai.djl.ndarray.NDManager;
+import ai.djl.ndarray.types.Shape;
 import ai.djl.repository.zoo.Criteria;
 import ai.djl.repository.zoo.ModelNotFoundException;
 import ai.djl.repository.zoo.ModelZoo;
 import ai.djl.repository.zoo.ZooModel;
+import ai.djl.training.DefaultTrainingConfig;
+import ai.djl.training.Trainer;
+import ai.djl.training.listener.TrainingListener;
+import ai.djl.training.loss.Loss;
+import ai.djl.training.optimizer.Optimizer;
+import ai.djl.training.tracker.Tracker;
 import ai.djl.training.util.ProgressBar;
 import ai.djl.translate.TranslateException;
 import ai.djl.translate.Translator;
@@ -49,7 +58,6 @@ import jakarta.annotation.PostConstruct;
 public class ModelService {
     Logger logger = LoggerFactory.getLogger(ModelService.class);
 
-    private static final Path root = Paths.get("model");
     private static final String SAVED_MODEL_ARCHIVE_EXTENSION = ".zip";
     public static final String DEFAULT_MODEL_NAME = "default_model" + SAVED_MODEL_ARCHIVE_EXTENSION;
 
@@ -57,10 +65,12 @@ public class ModelService {
 
     private final ModelRepository modelRepository;
     private final ImageRepository imageRepository;
+    private final Utils utils;
 
-    public ModelService(ModelRepository repository, ImageRepository imageRepository) {
+    public ModelService(ModelRepository repository, ImageRepository imageRepository, Utils utils) {
         this.modelRepository = repository;
         this.imageRepository = imageRepository;
+        this.utils = utils;
     }
 
     /**
@@ -74,7 +84,7 @@ public class ModelService {
 
         // create directories where uploaded models are stored
         try {
-            Files.createDirectories(Paths.get(returnModelPath()));
+            Files.createDirectories(Paths.get(this.utils.returnModelPath()));
         } catch (Exception ex) {
             throw new HttpClientErrorException(HttpStatusCode.valueOf(409),
                     "Could not create the directory where uploaded model files will be stored.");
@@ -87,15 +97,7 @@ public class ModelService {
         initInMemoryModels();
     }
 
-    /**
-     * Return the path where models will be stored, represented in some way by
-     * /resource/model
-     * 
-     * @return
-     */
-    public String returnModelPath() {
-        return getClass().getResource("/").getPath() + root;
-    }
+    
 
     /**
      * Given a .zip MultipartFile as input, move this file to the
@@ -121,7 +123,7 @@ public class ModelService {
         // Create directory to hold new model, constructed of a hash of the model's
         // name.
         // This assumption implies unique model zip names
-        Path newPath = Paths.get(returnModelPath() + "/" + hashDir);
+        Path newPath = Paths.get(this.utils.returnModelPath() + "/" + hashDir);
         try {
             Files.createDirectories(newPath);
         } catch (IOException e) {
@@ -364,7 +366,7 @@ public class ModelService {
      * @return
      */
     public Optional<File> getSavedModelInResourcesDir(String filename) {
-        String path = returnModelPath();
+        String path = this.utils.returnModelPath();
         logger.info("Running getResource for path: " + path);
         try {
             Optional<File> defaultModelInBasePath = returnFileFromPath(filename, path);
@@ -408,8 +410,40 @@ public class ModelService {
         synchronized (inMemoryModels) {
             inMemoryModels.add(inMemModel);
         }
+
+        // TODO:
+        // trainModelOnTestData(inMemModel);
         return inMemoryModels;
     }
+
+    private void trainModelOnTestData(InMemoryModel inMemModel) {
+
+        NDManager manager = NDManager.newBaseManager();
+        ai.djl.Model djlModel = inMemModel.loadedModel.getWrappedModel();
+
+        Loss l2loss = Loss.l2Loss();
+        Tracker lrt = Tracker.fixed(0.03f);
+        Optimizer sgd = Optimizer.sgd().setLearningRateTracker(lrt).build();
+
+        DefaultTrainingConfig config = new DefaultTrainingConfig(l2loss)
+            .optOptimizer(sgd) // Optimizer (loss function)
+            .optDevices(manager.getEngine().getDevices(1)) // single GPU
+            .addTrainingListeners(TrainingListener.Defaults.logging()); // Logging
+            
+        Trainer trainer = djlModel.newTrainer(config);
+
+        int batchSize = 32;
+        trainer.initialize(new Shape(batchSize, 2));
+
+        // ImageDataset testIter = 
+
+        // EasyTrain.evaluateDataset(trainer, testIter);
+        
+
+
+    }
+
+    
 
     /**
      * Initialize the in-memory models by finding all Models in the ModelRepository
@@ -483,6 +517,9 @@ public class ModelService {
         private ZooModel<Image, Classifications> loadedModel;
         private Predictor<Image, Classifications> predictor;
 
+        Queue<PredictRequest> requests = new ArrayDeque<PredictRequest>();
+        boolean running = true;
+
         public InMemoryModel(Long id, Criteria<Image, Classifications> criteria) {
             this.id = id;
             this.criteria = criteria;
@@ -496,11 +533,7 @@ public class ModelService {
                         "Unable to find model for criteria: " + criteria + " Message = " + e.getMessage());
             }
             this.predictor = this.loadedModel.newPredictor();
-
         }
-
-        Queue<PredictRequest> requests = new ArrayDeque<PredictRequest>();
-        boolean running = true;
 
         /**
          * 

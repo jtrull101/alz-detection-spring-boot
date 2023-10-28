@@ -7,15 +7,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 import java.util.stream.Collectors;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.jtrull.alzdetection.Utils;
 import com.jtrull.alzdetection.Model.ModelService;
 import com.jtrull.alzdetection.Model.ModelService.InMemoryModel;
 import com.jtrull.alzdetection.Prediction.ImpairmentEnum;
@@ -35,25 +32,20 @@ import jakarta.annotation.PostConstruct;
 public class ImageService {
     Logger logger = LoggerFactory.getLogger(ImageService.class);
 
-    private final Path root = Paths.get("images");
 
     private final ImageRepository imageRepository;
     private final ModelService modelService;
-    
-    private static final String DATASET_NAME = "Combined Dataset";
-    private static final String ARCHIVE_FORMAT = ".zip";
-    private static final String IMAGE_TYPE = ".jpg";
+    private final Utils utils;
 
-    HashMap<ImpairmentEnum, List<File>> testFiles = new HashMap<>();
-
-    public ImageService(ImageRepository imageRepository, ModelService modelService) {
+    public ImageService(ImageRepository imageRepository, ModelService modelService, Utils utils) {
         this.imageRepository = imageRepository;
         this.modelService = modelService;
+        this.utils = utils;
     }
     
     @PostConstruct
     public void init() {
-        initializeTestImages();
+        this.utils.initializeTestImages();
     }
 
     /**
@@ -78,7 +70,7 @@ public class ImageService {
             //      String filename = (file.getOriginalFilename() == null) ? file.getName() + file.getBytes().hashCode() : file.getOriginalFilename();
             String filename = file.getName() + file.getBytes().hashCode();
 
-            Path newPath = Paths.get(returnImagePath() + "/"  + modelId + "/" + filename.hashCode());
+            Path newPath = Paths.get(this.utils.returnImagePath() + "/"  + modelId + "/" + filename.hashCode());
             Files.createDirectories(newPath);
             destinationFile = newPath.resolve(Paths.get(filename)).normalize().toAbsolutePath();
             
@@ -114,12 +106,12 @@ public class ImageService {
     public ImagePrediction runPredictionForRandomImage(Long modelId) {
         // find random sample in test set
         Random generator = new Random();
-        Object[] vals = testFiles.values().toArray();
+        Object[] vals = this.utils.getTestFiles().values().toArray();
         int categoryLabelIndex = generator.nextInt(vals.length);
-        ImpairmentEnum categoryLabel = (ImpairmentEnum) testFiles.keySet().toArray()[categoryLabelIndex];
+        ImpairmentEnum categoryLabel = (ImpairmentEnum) this.utils.getTestFiles().keySet().toArray()[categoryLabelIndex];
         logger.info("chosen random category for random prediction: " + categoryLabel.toString());
 
-        List<File> images = testFiles.get(categoryLabel);
+        List<File> images = this.utils.getTestFiles().get(categoryLabel);
         File randomImage = images.get(generator.nextInt(images.size()));
 
         // Check image repository for previous predictions with this image and model number
@@ -196,7 +188,7 @@ public class ImageService {
                     .findAny()
                     .orElseThrow(() -> new RuntimeException());
         
-        List<File> flattenedFiles = testFiles.values()
+        List<File> flattenedFiles = this.utils.getTestFiles().values()
             .stream()
             .flatMap(List::stream)
             .collect(Collectors.toList());
@@ -223,7 +215,7 @@ public class ImageService {
         }
         ImpairmentEnum categoryLabel = opt.get();
         Random generator = new Random();
-        List<File> images = testFiles.get(categoryLabel);
+        List<File> images = this.utils.getTestFiles().get(categoryLabel);
         File randomImage = images.get(generator.nextInt(images.size()));
 
         // Check image repository for previous predictions with this image and model number
@@ -239,134 +231,6 @@ public class ImageService {
             imageRepository.save(prediction);
         }
         return prediction;
-    }
-
-    /**
-     * Return the path where models will be stored, represented in some way by /resource/model
-     * 
-     * @return
-     */
-    public String returnImagePath() {
-        return getClass().getResource("/").getPath() + root;
-    }
-
-    public String testImagePath() {
-        return returnImagePath() + "/" + DATASET_NAME + "/test/";
-    }
-
-    /**
-     * Given the Dataset .zip that is supplied with this application, populate the map of test images per impairment category. 
-     *  These images are used in the /random prediction endpoint to supply some dummy MRI data
-     */
-    public void initializeTestImages() {
-
-        Path p;
-        try {
-            p = Files.createDirectories(Paths.get(returnImagePath()));
-        } catch (Exception ex) {
-            throw new HttpClientErrorException (HttpStatusCode.valueOf(409), "Could not create the directory where uploaded model files will be stored.");
-        }
-
-        // Find the Zipped dataset and unzip if found
-        logger.trace("searching for " + DATASET_NAME + ARCHIVE_FORMAT + " in directory: " + p);
-        List<File> foundZipFiles = new ArrayList<>();
-        try {
-            foundZipFiles = Files.walk(p)
-                    .filter(Files::isRegularFile)
-                    .filter(r -> r.getFileName().toString().contains(DATASET_NAME + ARCHIVE_FORMAT))
-                    .map(x -> x.toFile())
-                    .collect(Collectors.toList());
-        } catch (IOException e) {
-            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find dataset with name '" + DATASET_NAME + ARCHIVE_FORMAT + "'. message = " + e.getMessage());
-        }
-
-        logger.trace("found zipped combined dataset directory: " + foundZipFiles);
-        for (File f : foundZipFiles) {
-            try (ZipInputStream zipInputStream = new ZipInputStream(Files.newInputStream(f.toPath()))) {
-                ZipEntry entry;
-                while ((entry = zipInputStream.getNextEntry()) != null) {
-                    final Path toPath = p.resolve(entry.getName());
-                    if (toPath.toString().contains("/train")) {
-                        // ignore training data
-                        continue;
-                    }
-                    // create directories for nested zip
-                    if (entry.isDirectory()) {
-                        if (!toPath.toFile().exists()) {
-                            logger.trace("creating required subdirectory: " + toPath);
-                            Files.createDirectory(toPath);
-                        }
-                    } else {
-                        if (!toPath.toFile().exists()) {
-                            Files.copy(zipInputStream, toPath);
-                        }
-                    }
-                }
-            } catch (IOException e) {
-                throw new HttpClientErrorException (HttpStatusCode.valueOf(406), "Error while decompressing dataset archive. message = " + e.getMessage());
-            }
-        }
-
-        // Now the contents have been unzipped. Search for the uncompressed dataset
-        Optional<File> opt = Optional.empty();
-        try {
-            opt = Files.walk(p)
-                    .filter(Files::isDirectory)
-                    .filter(r -> r.getFileName().toString().contains(DATASET_NAME))
-                    .map(x -> x.toFile())
-                    .findFirst();
-        } catch (IOException e) {
-            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find unzipped dataset with name '" + DATASET_NAME + "'. message = " + e.getMessage());
-        }
-        if (opt.isEmpty()) {
-            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find Combined Dataset directory after unzipping. Check if " + DATASET_NAME + " exists at location: " + p);
-        }
-
-        File foundCombinedDatasetDir = opt.get();
-        logger.trace("found unzipped combined dataset directory: " + foundCombinedDatasetDir);
-
-        // populate testFiles hashmap of all test images mapped to their corresponding categories
-        List<File> impairmentCategories = null;
-        Path testDirPath = Paths.get(testImagePath());
-        try {
-            impairmentCategories = Files.walk(testDirPath)
-                    .filter(Files::isDirectory)
-                    .map(x -> x.toFile())
-                    .collect(Collectors.toList());
-
-        } catch (IOException e) {
-            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Error while finding /test directory at location: " + testDirPath);
-        }
-        if (impairmentCategories == null) {
-            throw new HttpClientErrorException (HttpStatusCode.valueOf(404), "Unable to find impairment category subdirectories in dataset at location: " + testDirPath);
-        }
-
-        for (File f : impairmentCategories) {
-            String name = f.getName().replaceAll("\\P{Print}", "");
-            if (name.equals("test")) continue; // exclude parent directory
-            
-            logger.trace("processing potential impairment category: " + name);
-            Optional<ImpairmentEnum> category = ImpairmentEnum.fromString(name);
-            if (category.isEmpty()) {
-                throw new HttpClientErrorException (HttpStatusCode.valueOf(406), "Error while determining ImpairmentEnum category from directory name: " + name);
-            }
-
-            List<File> images = new ArrayList<>();
-            try {
-                images = Files.walk(f.toPath())
-                        .filter(Files::isRegularFile)
-                        .filter(r -> r.getFileName().toString().contains(IMAGE_TYPE))
-                        .map(x -> x.toFile())
-                        .collect(Collectors.toList());
-            } catch (IOException e) {
-                throw new HttpClientErrorException (HttpStatusCode.valueOf(400), "Error while gathering images from category " + name);
-            }
-
-            if ((testFiles.containsKey(category.get()) && testFiles.get(category.get()).size() < images.size()) || !testFiles.containsKey(category.get())) {
-                logger.info("adding " + images.size() + " images to category: " + category.get());
-                testFiles.put(category.get(), images);
-            }
-        }
     }
 
    
