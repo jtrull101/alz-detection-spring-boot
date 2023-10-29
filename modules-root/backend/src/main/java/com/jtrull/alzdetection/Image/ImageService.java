@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
@@ -24,27 +25,17 @@ import com.jtrull.alzdetection.exceptions.generic.FailedRequirementException;
 import com.jtrull.alzdetection.exceptions.predictions.PredictionFailureException;
 import com.jtrull.alzdetection.exceptions.predictions.PredictionNotFoundException;
 
-import jakarta.annotation.PostConstruct;
-
 
 @Service
 public class ImageService {
     Logger logger = LoggerFactory.getLogger(ImageService.class);
 
-
     private final ImageRepository imageRepository;
     private final ModelService modelService;
-    private final Utils utils;
 
-    public ImageService(ImageRepository imageRepository, ModelService modelService, Utils utils) {
+    public ImageService(ImageRepository imageRepository, ModelService modelService) {
         this.imageRepository = imageRepository;
         this.modelService = modelService;
-        this.utils = utils;
-    }
-    
-    @PostConstruct
-    public void init() {
-        this.utils.initializeTestImages();
     }
 
     /**
@@ -69,7 +60,7 @@ public class ImageService {
             //      String filename = (file.getOriginalFilename() == null) ? file.getName() + file.getBytes().hashCode() : file.getOriginalFilename();
             String filename = file.getName() + file.getBytes().hashCode();
 
-            Path newPath = Paths.get(this.utils.returnImagePath() + "/"  + modelId + "/" + filename.hashCode());
+            Path newPath = Paths.get(Utils.returnImagePath() + "/"  + modelId + "/" + filename.hashCode());
             Files.createDirectories(newPath);
             destinationFile = newPath.resolve(Paths.get(filename)).normalize().toAbsolutePath();
             
@@ -101,13 +92,15 @@ public class ImageService {
      */
     public ImagePrediction runPredictionForRandomImage(Long modelId) {
         // find random sample in test set
+        HashMap<ImpairmentEnum, List<File>> testFiles = TestDataLoader.getInstance().getTestFiles();
+
         Random generator = new Random();
-        Object[] vals = this.utils.getTestFiles().values().toArray();
+        Object[] vals = testFiles.values().toArray();
         int categoryLabelIndex = generator.nextInt(vals.length);
-        ImpairmentEnum categoryLabel = (ImpairmentEnum) this.utils.getTestFiles().keySet().toArray()[categoryLabelIndex];
+        ImpairmentEnum categoryLabel = (ImpairmentEnum) testFiles.keySet().toArray()[categoryLabelIndex];
         logger.info("chosen random category for random prediction: " + categoryLabel.toString());
 
-        List<File> images = this.utils.getTestFiles().get(categoryLabel);
+        List<File> images = testFiles.get(categoryLabel);
         File randomImage = images.get(generator.nextInt(images.size()));
 
         // Check image repository for previous predictions with this image and model number
@@ -174,7 +167,7 @@ public class ImageService {
      * @return
      */
     public List<ImagePrediction> runPredictionForEveryTestFile(long modelId) {
-        List<File> flattenedFiles = this.utils.getTestFiles().values().stream()
+        List<File> flattenedFiles = TestDataLoader.getInstance().getTestFiles().values().stream()
             .flatMap(List::stream)
             .collect(Collectors.toList());
 
@@ -196,7 +189,7 @@ public class ImageService {
         // find random sample in test set for specific impairment category
         ImpairmentEnum categoryLabel = ImpairmentEnum.fromString(impairment);
         Random generator = new Random();
-        List<File> images = this.utils.getTestFiles().get(categoryLabel);
+        List<File> images = TestDataLoader.getInstance().getTestFiles().get(categoryLabel);
         File randomImage = images.get(generator.nextInt(images.size()));
 
         // Check image repository for previous predictions with this image and model number

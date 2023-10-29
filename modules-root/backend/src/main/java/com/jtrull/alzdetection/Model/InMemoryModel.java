@@ -128,4 +128,24 @@ public class InMemoryModel {
     public void setCriteria(Criteria<Image, Classifications> criteria) {
         this.criteria = criteria;
     }
+
+    public ModelService getModelService() {
+        return modelService;
+    }
+
+    public ZooModel<Image, Classifications> getLoadedModel() {
+        return loadedModel;
+    }
+
+    public void setLoadedModel(ZooModel<Image, Classifications> loadedModel) {
+        this.loadedModel = loadedModel;
+    }
+
+    public Predictor<Image, Classifications> getPredictor() {
+        return predictor;
+    }
+
+    public void setPredictor(Predictor<Image, Classifications> predictor) {
+        this.predictor = predictor;
+    }
 }

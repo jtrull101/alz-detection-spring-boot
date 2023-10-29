@@ -36,8 +36,19 @@ import ai.djl.modality.Classifications.Classification;
 import ai.djl.modality.cv.Image;
 import ai.djl.modality.cv.translator.ImageClassificationTranslator;
 import ai.djl.modality.cv.util.NDImageUtils;
+// import ai.djl.ndarray.NDManager;
+// import ai.djl.ndarray.types.Shape;
 import ai.djl.repository.zoo.Criteria;
+// import ai.djl.training.DefaultTrainingConfig;
+// import ai.djl.training.EasyTrain;
+// import ai.djl.training.Trainer;
+// import ai.djl.training.evaluator.Accuracy;
+// import ai.djl.training.listener.TrainingListener;
+// import ai.djl.training.loss.Loss;
+// import ai.djl.training.optimizer.Optimizer;
+// import ai.djl.training.tracker.Tracker;
 import ai.djl.training.util.ProgressBar;
+// import ai.djl.translate.TranslateException;
 import ai.djl.translate.Translator;
 import jakarta.annotation.PostConstruct;
 
@@ -52,14 +63,11 @@ public class ModelService {
 
     private final ModelRepository modelRepository;
     private final ImageRepository imageRepository;
-    private final Utils utils;
 
-    public ModelService(ModelRepository repository, ImageRepository imageRepository, Utils utils) {
+    public ModelService(ModelRepository repository, ImageRepository imageRepository) {
         this.modelRepository = repository;
         this.imageRepository = imageRepository;
-        this.utils = utils;
     }
-
 
     /**
      * Invoked after the constructor, perform initialization operations including:
@@ -72,7 +80,7 @@ public class ModelService {
 
         // create directories where uploaded models are stored
         try {
-            Files.createDirectories(Paths.get(this.utils.returnModelPath()));
+            Files.createDirectories(Paths.get(Utils.returnModelPath()));
         } catch (Exception ex) {
             throw new FailedRequirementException(ex, HttpStatus.CONFLICT, 
                 "Could not create the directory where uploaded model files will be stored.");
@@ -107,7 +115,7 @@ public class ModelService {
         int hashDir = file.getName().hashCode();
         // Create directory to hold new model, constructed of a hash of the model's name.
         // This assumption implies unique model zip names
-        Path newPath = Paths.get(this.utils.returnModelPath() + "/" + hashDir);
+        Path newPath = Paths.get(Utils.returnModelPath() + "/" + hashDir);
         try {
             Files.createDirectories(newPath);
         } catch (IOException e) {
@@ -340,7 +348,7 @@ public class ModelService {
      * @return
      */
     public Optional<File> getSavedModelInResourcesDir(String filename) {
-        String path = this.utils.returnModelPath();
+        String path = Utils.returnModelPath();
         try {
             Optional<File> defaultModelInBasePath = returnFileFromPath(filename, path);
             if (defaultModelInBasePath.isPresent()) {
@@ -386,25 +394,34 @@ public class ModelService {
     // private void trainModelOnTestData(InMemoryModel inMemModel) {
 
     //     NDManager manager = NDManager.newBaseManager();
-    //     ai.djl.Model djlModel = inMemModel.loadedModel.getWrappedModel();
-
-    //     Loss l2loss = Loss.l2Loss();
-    //     Tracker lrt = Tracker.fixed(0.03f);
-    //     Optimizer sgd = Optimizer.sgd().setLearningRateTracker(lrt).build();
-
-    //     DefaultTrainingConfig config = new DefaultTrainingConfig(l2loss)
-    //         .optOptimizer(sgd) // Optimizer (loss function)
-    //         .optDevices(manager.getEngine().getDevices(1)) // single GPU
-    //         .addTrainingListeners(TrainingListener.Defaults.logging()); // Logging
+    //     ai.djl.Model djlModel = inMemModel.getLoadedModel().getWrappedModel();
+    //     DefaultTrainingConfig config = new DefaultTrainingConfig(Loss.maskedSoftmaxCrossEntropyLoss())
+    //         .addEvaluator(new Accuracy())
+    //         .addTrainingListeners(TrainingListener.Defaults.logging());
             
-    //     Trainer trainer = djlModel.newTrainer(config);
+    //     Trainer trainer = null;
+    //     try{
+    //         trainer = djlModel.newTrainer(config);
+    //     } catch (Exception e) {
+    //         System.out.println(e);
+    //     }
+        
 
     //     int batchSize = 32;
-    //     trainer.initialize(new Shape(batchSize, 2));
+    //     trainer.initialize(new Shape(batchSize,3,128,128));
 
-    //     // ImageDataset testIter = 
+    //     MRIImageDataset dataset;
+    //     try {
+    //         dataset = new MRIImageDataset.Builder().build();
+    //     } catch (IOException e) {
+    //         throw new RuntimeException(e);
+    //     }
 
-    //     // EasyTrain.evaluateDataset(trainer, testIter);
+    //     try {
+    //         EasyTrain.evaluateDataset(trainer, dataset);
+    //     } catch (IOException | TranslateException e) {
+    //         throw new RuntimeException(e);
+    //     }
     // }
 
     /**

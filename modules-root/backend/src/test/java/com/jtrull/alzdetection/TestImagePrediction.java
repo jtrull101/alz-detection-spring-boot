@@ -62,7 +62,6 @@ public class TestImagePrediction {
 	@Autowired private ImageRepository imageRepository;
     @Autowired private ModelRepository modelRepository;
     @Autowired private ModelService modelService;
-    @Autowired private Utils utils;
 
     private static final String BASE_URL = "/api/v1/model";
     private static final String ID_KEY = "?id=";
@@ -184,7 +183,7 @@ public class TestImagePrediction {
 	@Order(2)
     @RepeatedTest(TEST_INVOCATIONS)
     public void testPredictionFromInvalidFile() throws Exception {
-        String path = this.utils.returnImagePath();
+        String path = Utils.returnImagePath();
 		String filepath = path + "/test.json";
 
 		JSONObject json = new JSONObject();

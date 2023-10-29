@@ -59,7 +59,6 @@ public class TestModel {
     @Autowired private MockMvc mvc;
 	@Autowired private ModelRepository modelRepository;
 	@Autowired private ModelService modelService;
-	@Autowired private Utils utils;
 
     private static final String BASE_URL = "/api/v1/model";
 	private static final String LOAD_URL = BASE_URL + "/load";
@@ -153,7 +152,7 @@ public class TestModel {
 	@Order(2)
 	@RepeatedTest(TEST_INVOCATIONS)
 	public void testLoadNonZipAsModel() throws Exception {
-		String path = this.utils.returnModelPath();
+		String path = Utils.returnModelPath();
 		String filepath = path + "/test.json";
 
 		JSONObject json = new JSONObject();
