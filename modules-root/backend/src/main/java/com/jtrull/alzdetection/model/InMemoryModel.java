@@ -1,14 +1,14 @@
-package com.jtrull.alzdetection.Model;
+package com.jtrull.alzdetection.model;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import com.jtrull.alzdetection.Image.ImagePrediction;
-import com.jtrull.alzdetection.Prediction.ImpairmentEnum;
 import com.jtrull.alzdetection.exceptions.model.InvalidModelFileException;
 import com.jtrull.alzdetection.exceptions.predictions.PredictionFailureException;
+import com.jtrull.alzdetection.image.ImagePrediction;
+import com.jtrull.alzdetection.prediction.ImpairmentEnum;
 
 import ai.djl.MalformedModelException;
 import ai.djl.inference.Predictor;

@@ -1,4 +1,4 @@
-package com.jtrull.alzdetection.Image;
+package com.jtrull.alzdetection.image;
 
 import java.io.File;
 import java.io.IOException;
@@ -17,8 +17,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.jtrull.alzdetection.Utils;
-import com.jtrull.alzdetection.Prediction.ImpairmentEnum;
 import com.jtrull.alzdetection.exceptions.generic.FailedRequirementException;
+import com.jtrull.alzdetection.prediction.ImpairmentEnum;
 
 
 public class TestDataLoader {

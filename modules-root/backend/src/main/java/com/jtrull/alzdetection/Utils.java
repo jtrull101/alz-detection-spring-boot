@@ -14,9 +14,12 @@ public class Utils {
     
     public static final String DATASET_NAME = "Combined Dataset";
     public static final String ARCHIVE_FORMAT = ".zip";
+
     public static final String IMAGE_TYPE = ".jpg";
 
-    
+    public static final String SEABORN_PLOT_TYPE = ".png";
+    public static final String PROPERTIES_FILE_TYPE = ".properties";
+
     public static final Path MODEL_ROOT = Paths.get("model");
     public static final Path IMAGE_ROOT = Paths.get("images");
 

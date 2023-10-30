@@ -1,4 +1,4 @@
-package com.jtrull.alzdetection.Prediction;
+package com.jtrull.alzdetection.prediction;
 
 import java.util.List;
 import java.util.stream.Collectors;

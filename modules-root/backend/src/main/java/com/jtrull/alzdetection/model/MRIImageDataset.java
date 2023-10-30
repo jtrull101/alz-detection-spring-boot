@@ -1,4 +1,4 @@
-package com.jtrull.alzdetection.Model;
+package com.jtrull.alzdetection.model;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -9,8 +9,8 @@ import java.util.stream.Collectors;
 
 import javax.imageio.ImageIO;
 
-import com.jtrull.alzdetection.Image.TestDataLoader;
-import com.jtrull.alzdetection.Prediction.ImpairmentEnum;
+import com.jtrull.alzdetection.image.TestDataLoader;
+import com.jtrull.alzdetection.prediction.ImpairmentEnum;
 
 import ai.djl.ndarray.NDArray;
 import ai.djl.ndarray.NDList;

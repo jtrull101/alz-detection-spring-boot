@@ -1,4 +1,4 @@
-package com.jtrull.alzdetection.Image;
+package com.jtrull.alzdetection.image;
 
 import java.io.File;
 import java.io.IOException;
@@ -19,11 +19,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.jtrull.alzdetection.Utils;
-import com.jtrull.alzdetection.Model.ModelService;
-import com.jtrull.alzdetection.Prediction.ImpairmentEnum;
 import com.jtrull.alzdetection.exceptions.generic.FailedRequirementException;
 import com.jtrull.alzdetection.exceptions.predictions.PredictionFailureException;
 import com.jtrull.alzdetection.exceptions.predictions.PredictionNotFoundException;
+import com.jtrull.alzdetection.model.ModelService;
+import com.jtrull.alzdetection.prediction.ImpairmentEnum;
 
 
 @Service

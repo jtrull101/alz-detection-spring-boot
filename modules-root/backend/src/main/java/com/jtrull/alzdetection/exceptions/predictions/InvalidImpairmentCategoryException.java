@@ -8,7 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.web.client.HttpClientErrorException;
 
-import com.jtrull.alzdetection.Prediction.ImpairmentEnum;
+import com.jtrull.alzdetection.prediction.ImpairmentEnum;
 
 public class InvalidImpairmentCategoryException extends HttpClientErrorException{
     public static final String MESSAGE = "Chosen category is not one of the specified Impairment categories: " + Arrays.asList(ImpairmentEnum.asStrings().toArray());

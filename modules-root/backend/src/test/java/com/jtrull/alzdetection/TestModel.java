@@ -2,7 +2,6 @@ package com.jtrull.alzdetection;
 
 import org.javatuples.Pair;
 import org.json.JSONObject;
-import org.junit.Assert;
 import org.junit.experimental.ParallelComputer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.RepeatedTest;
@@ -27,14 +26,16 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.io.ByteStreams;
-import com.jtrull.alzdetection.Model.Model;
-import com.jtrull.alzdetection.Model.ModelRepository;
-import com.jtrull.alzdetection.Model.ModelService;
 import com.jtrull.alzdetection.exceptions.model.InvalidModelFileException;
 import com.jtrull.alzdetection.exceptions.model.ModelNotFoundException;
+import com.jtrull.alzdetection.model.Model;
+import com.jtrull.alzdetection.model.ModelRepository;
+import com.jtrull.alzdetection.model.ModelService;
 
 import jakarta.servlet.ServletException;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -44,7 +45,10 @@ import static org.junit.jupiter.api.parallel.ExecutionMode.SAME_THREAD;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
+import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.Random;
@@ -60,11 +64,12 @@ public class TestModel {
 	@Autowired private ModelRepository modelRepository;
 	@Autowired private ModelService modelService;
 
+	private static final String ID_KEY = "?id=";
     private static final String BASE_URL = "/api/v1/model";
 	private static final String LOAD_URL = BASE_URL + "/load";
+	private static final String LOAD_DETAILS_URL = BASE_URL + "/load/details" + ID_KEY;
 	private static final String DELETE_URL = BASE_URL +"/delete";
 	private static final String DELETE_ALL_URL = DELETE_URL +"/all";
-	private static final String ID_KEY = "?id=";
 
 	private static final int TEST_INVOCATIONS = AlzDetectionApplicationTests.TEST_INVOCATIONS;
 	private static final ObjectMapper MAPPER = AlzDetectionApplicationTests.MAPPER;
@@ -77,28 +82,36 @@ public class TestModel {
 	@Order(1)
 	@RepeatedTest(TEST_INVOCATIONS)
 	public void testLoadModel() throws Exception {
-		Pair<String, Model> pair = runLoadModelRequest(modelService, getClass(), mvc);
-		String modelName = pair.getValue0();
-		Model model = pair.getValue1();
-		Assert.assertNotNull("Unable to find Model object after load model request", model);
-		Assert.assertTrue("Model after create request returned with different name - this is not intended", model.getName().equals(modelName));
+		Model m = runLoadModelRequest(modelService, getClass(), mvc);
+		assertNotNull("Unable to find Model object after load model request", m);
+	}
+
+	@Order(1)
+	@RepeatedTest(TEST_INVOCATIONS)
+	public void testLoadModelPropertiesAndOrPlot() throws Exception {
+		Model model = runLoadModelRequest(modelService, getClass(), mvc);
+		model = runLoadModelDetailsRequest(model.getId(), modelService, getClass(), mvc);
+		assertNotNull("Unable to find Model object after load details request", model);
 	}
 
 	/**
 	 * Load a model into the API using the /model/load endpoint.
-	 * @param <T>
 	 * 
+	 * @param <T>
+	 * @param modelService
+	 * @param clazz
+	 * @param mvc
 	 * @return
 	 * @throws Exception
 	 */
-	public static <T> Pair<String, Model> runLoadModelRequest(ModelService modelService, Class<T> clazz, MockMvc mvc) throws Exception {
+	public static <T> Model runLoadModelRequest(ModelService modelService, Class<T> clazz, MockMvc mvc) throws Exception {
 		String path = getModelPath(modelService);
         String filename = path.substring(path.lastIndexOf("/")+1);
 		String modelName = new Random().nextInt(1000) + "-" + filename;
 		FileInputStream fis = new FileInputStream(path);
 
 		try (InputStream is = clazz.getResourceAsStream(path)) {
-			MockMultipartFile mockMultipartFile = new MockMultipartFile("file", modelName, "application/zip", ByteStreams.toByteArray(fis));
+			MockMultipartFile mockMultipartFile = new MockMultipartFile("model", modelName, "application/zip", ByteStreams.toByteArray(fis));
 
 			MvcResult _return = mvc.perform(MockMvcRequestBuilders.multipart(LOAD_URL)
 						.file(mockMultipartFile)
@@ -107,13 +120,140 @@ public class TestModel {
 					.andReturn();
 
 			String content = _return.getResponse().getContentAsString();
-			Assert.assertNotNull("Unable to find content after loading model through /load endpoint", content);
+			assertNotNull("Unable to find content after loading model through /load endpoint", content);
 			Model m = null;
 			try {
 				m = MAPPER.readValue(content, Model.class);
-			} catch (JsonProcessingException e) { Assert.fail("Return from model /load unable to parse to Model object!"); }
-			return new Pair<String,Model>(modelName, m);
+			} catch (JsonProcessingException e) { fail("Return from model /load unable to parse to Model object!"); }
+			// Include modelName in request so we can assert the model was created with the correct ZIP file
+			
+			assertTrue("Model after create request returned with different name - this is not intended", m.getName().equals(modelName));
+			return m;
 		} 
+	}
+
+	/**
+	 * 
+	 * @param <T>
+	 * @param modelService
+	 * @param clazz
+	 * @param mvc
+	 * @return
+	 * @throws Exception
+	 */
+	public static <T> Model runLoadModelDetailsRequest(Long modelId, ModelService modelService, Class<T> clazz, MockMvc mvc) throws Exception {
+		String path = getModelPath(modelService);
+        String filename = path.substring(path.lastIndexOf("/")+1);
+		String modelName = new Random().nextInt(1000) + "-" + filename;
+		
+		File modelFile = new File(path);
+		String parent = modelFile.getParent();
+		double rand = Math.random();
+
+		// 33% of the time just send plot
+		if (rand <= 0.33) {
+			Pair<File, MockMultipartFile> plotPair = getPlotFile(parent, modelName);
+			try (InputStream is = clazz.getResourceAsStream(plotPair.getValue0().getAbsolutePath())) {
+				MvcResult _return = mvc.perform(MockMvcRequestBuilders.multipart(LOAD_DETAILS_URL + modelId)
+							.file(plotPair.getValue1()))
+						.andExpect(status().isOk())
+						.andReturn();
+
+				String content = _return.getResponse().getContentAsString();
+				assertNotNull("Unable to find content after loading model plot through /details endpoint", content);
+				try {
+					Model m = MAPPER.readValue(content, Model.class);
+					assertNotNull("Unable to find seaborn plot path after pushing plot to /details endpoint", m.getSeabornPlotPath());
+					return m;
+				} catch (JsonProcessingException e) { fail("Return from model /load/details unable to parse to Model object!"); }	
+			} 
+
+		// 33% of the time just send properties
+		} else if (rand <= 0.66) {
+			Pair<File, MockMultipartFile> propertiesPair = getPropertiesFile(parent, modelName);
+			try (InputStream is = clazz.getResourceAsStream(propertiesPair.getValue0().getAbsolutePath())) {
+				MvcResult _return = mvc.perform(MockMvcRequestBuilders.multipart(LOAD_DETAILS_URL + modelId)
+							.file(propertiesPair.getValue1()))
+						.andExpect(status().isOk())
+						.andReturn();
+
+				String content = _return.getResponse().getContentAsString();
+				assertNotNull("Unable to find content after loading model properties through /details endpoint", content);
+				try {
+					Model m = MAPPER.readValue(content, Model.class);
+					assertNotNull("Unable to find loss after pushing plot to /details endpoint", m.getLoss());
+					assertNotNull("Unable to find accuracy after pushing plot to /details endpoint", m.getAccuracy());
+					return m;
+				} catch (JsonProcessingException e) { fail("Return from model /load/details unable to parse to Model object!"); }	
+			} 
+		} else {
+			Pair<File, MockMultipartFile> plotPair = getPlotFile(parent, modelName);
+			Pair<File, MockMultipartFile> propertiesPair = getPropertiesFile(parent, modelName);
+			try (InputStream is = clazz.getResourceAsStream(plotPair.getValue0().getAbsolutePath())) {
+				try (InputStream _is = clazz.getResourceAsStream(propertiesPair.getValue0().getAbsolutePath())) {
+
+					MvcResult _return = mvc.perform(MockMvcRequestBuilders.multipart(LOAD_DETAILS_URL + modelId)
+							.file(propertiesPair.getValue1())
+							.file(plotPair.getValue1()))
+						.andExpect(status().isOk())
+						.andReturn();
+
+					String content = _return.getResponse().getContentAsString();
+					assertNotNull("Unable to find content after loading model properties through /details endpoint", content);
+					try {
+						Model m = MAPPER.readValue(content, Model.class);
+						assertNotNull("Unable to find seaborn plot path after pushing plot to /details endpoint", m.getSeabornPlotPath());
+						assertNotNull("Unable to find loss after pushing plot to /details endpoint", m.getLoss());
+						assertNotNull("Unable to find accuracy after pushing plot to /details endpoint", m.getAccuracy());
+						return m;
+					} catch (JsonProcessingException e) { fail("Return from model /load/details unable to parse to Model object!"); }
+				}
+			}
+		}
+		throw new AssertionError("Unable to load model details for specified model!");
+	}
+
+	/**
+	 * 
+	 * @param path
+	 * @param modelName
+	 * @return
+	 * @throws IOException
+	 */
+	private static Pair<File, MockMultipartFile> getPropertiesFile(String path, String modelName) throws IOException {
+		File propertiesFile = Files.walk(Paths.get(path))
+			.filter(Files::isRegularFile)
+			.filter(r -> r.getFileName().toString().contains(Utils.PROPERTIES_FILE_TYPE))
+			.map(x -> x.toFile())
+			.findFirst()
+			.orElseThrow(() -> 
+				new AssertionError("Unable to find properties file for model name '" + modelName + "' in path '" + path + "'"));
+
+		return new Pair<File,MockMultipartFile> (
+			propertiesFile,
+			new MockMultipartFile("properties", propertiesFile.getName(), MediaType.TEXT_PLAIN_VALUE, ByteStreams.toByteArray(new FileInputStream(propertiesFile))));
+	}
+
+	/**
+	 * 
+	 * @param path
+	 * @param modelName
+	 * @return
+	 * @throws IOException
+	 */
+	private static Pair<File, MockMultipartFile> getPlotFile(String path, String modelName) throws IOException {
+		File plotFile = Files.walk(Paths.get(path))
+			.filter(Files::isRegularFile)
+			.filter(r -> r.getFileName().toString().contains(Utils.SEABORN_PLOT_TYPE))
+			.map(x -> x.toFile())
+			.findFirst()
+			.orElseThrow(() -> 
+				new AssertionError("Unable to find seaborn plot for model name '" + modelName + "' in path '" + path + "'"));
+
+		return new Pair<File,MockMultipartFile> (
+			plotFile,
+			new MockMultipartFile("plot", plotFile.getName(), MediaType.IMAGE_PNG_VALUE, ByteStreams.toByteArray(new FileInputStream(plotFile))));
+		
 	}
 
 	/**
@@ -129,7 +269,7 @@ public class TestModel {
 		String modelName = new Random().nextInt(1000) + "-" + filename;
 
 		try (InputStream is = getClass().getResourceAsStream(path)) {
-			MockMultipartFile mockMultipartFile = new MockMultipartFile("file", modelName, "application/zip", 
+			MockMultipartFile mockMultipartFile = new MockMultipartFile("model", modelName, "application/zip", 
 					ByteStreams.toByteArray(InputStream.nullInputStream()));
 
 			mvc.perform(MockMvcRequestBuilders.multipart(LOAD_URL)
@@ -163,7 +303,7 @@ public class TestModel {
 		FileInputStream fis = new FileInputStream(filepath);
 
 		try (InputStream is = getClass().getResourceAsStream(filepath)) {
-			MockMultipartFile mockMultipartFile = new MockMultipartFile("file", "test.json", MediaType.APPLICATION_JSON.toString(), ByteStreams.toByteArray(fis));
+			MockMultipartFile mockMultipartFile = new MockMultipartFile("model", "test.json", MediaType.APPLICATION_JSON.toString(), ByteStreams.toByteArray(fis));
 			
 			mvc.perform(MockMvcRequestBuilders.multipart(LOAD_URL)
 					.file(mockMultipartFile)
@@ -190,7 +330,7 @@ public class TestModel {
 		Model model = modelRepository.findAll().get(0);
 		Model readModel = runGetModelRequest(model);
 		model.setFilepath(null); // filepath nullified during serialize
-		Assert.assertEquals("Model does not equal the expected object on return!", model, readModel);
+		assertEquals("Model does not equal the expected object on return!", model, readModel);
 	}
 
 	/**
@@ -262,7 +402,7 @@ public class TestModel {
 				.andReturn();
 			String innerContent = response.getResponse().getContentAsString();
 			Model readModel = MAPPER.readValue(innerContent, Model.class);
-			Assert.assertEquals("Model does not equal the expected object on return!", m, readModel);
+			assertEquals("Model does not equal the expected object on return!", m, readModel);
 		}
 	}
 
@@ -296,7 +436,7 @@ public class TestModel {
 			fail("succeeded deleting default model when expected to fail");
 
 		} catch (ServletException e) {
-			Assert.assertTrue("Unexpected exception type returned!", e.getRootCause() instanceof UnsupportedOperationException);
+			assertTrue("Unexpected exception type returned!", e.getRootCause() instanceof UnsupportedOperationException);
 		}
 	}
 
@@ -320,7 +460,7 @@ public class TestModel {
 				.andExpect(status().isOk())
 				.andReturn();
 		String content = result.getResponse().getContentAsString();
-		Assert.assertTrue("Content of delete model body not 'true' boolean as expected, found: " + content, Boolean.valueOf(content));
+		assertTrue("Content of delete model body not 'true' boolean as expected, found: " + content, Boolean.valueOf(content));
 	}
 
     /** 
@@ -337,7 +477,7 @@ public class TestModel {
 				.andExpect(status().isOk())
 				.andReturn();
         String content = result.getResponse().getContentAsString();
-		Assert.assertTrue("Content of delete all models body not 'true' boolean as expected, found: " + content, Boolean.valueOf(content));
+		assertTrue("Content of delete all models body not 'true' boolean as expected, found: " + content, Boolean.valueOf(content));
     }
 
 	/**
@@ -350,7 +490,7 @@ public class TestModel {
         Class<?>[] classes  = new Class<?>[numConcurrent];
         Arrays.fill(classes, TestModel.class);
 		Result result = JUnitCore.runClasses(new ParallelComputer(true, true), classes);
-        Assert.assertTrue("Failed during execution of concurrent tests", result.wasSuccessful());
+        assertTrue("Failed during execution of concurrent tests", result.wasSuccessful());
     }
 
 	/**
@@ -363,7 +503,7 @@ public class TestModel {
 	private static File findSavedModel(ModelService modelService) throws Exception {
 		Optional<File> savedModel = modelService.getSavedModelInResourcesDir(ModelService.DEFAULT_MODEL_NAME);
 		if (savedModel.isEmpty()) {
-			Assert.fail("Unable to find saved model");
+			fail("Unable to find saved model");
 		}
 		return savedModel.get();
 	}

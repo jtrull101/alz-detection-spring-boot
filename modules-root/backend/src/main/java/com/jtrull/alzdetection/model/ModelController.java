@@ -1,6 +1,13 @@
-package com.jtrull.alzdetection.Model;
+package com.jtrull.alzdetection.model;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
+import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,8 +22,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.jtrull.alzdetection.Image.ImageService;
+import com.jtrull.alzdetection.exceptions.generic.FailedRequirementException;
 import com.jtrull.alzdetection.exceptions.model.InvalidModelFileException;
+import com.jtrull.alzdetection.image.ImageService;
 
 @RestController
 @RequestMapping(path = "api/v1/model")
@@ -35,8 +43,10 @@ public class ModelController {
     // POST/CREATE mappings
 
     @PostMapping("/load")
-    public ResponseEntity<Model> loadModelFromFile(@RequestParam("file") MultipartFile file) {
-        Model m = this.modelService.loadModelFromFile(file);
+    public ResponseEntity<Model> loadModelFromFile(@RequestParam("model") MultipartFile model) {
+        Model m = this.modelService.loadModelFromFile(model);
+
+        // Run a random prediction on the new model to assert it is a valid model
         try {
             logger.debug("running random prediction on new model: " + m.getId());
             this.imageService.runPredictionForRandomImage(m.getId());
@@ -44,9 +54,40 @@ public class ModelController {
         } catch (Exception e) {
             logger.warn("Unable to use model with ID: " + m.getId() + ", removing from inventory");
             this.modelService.deleteModelById(m.getId());
-            throw new InvalidModelFileException(file, "Error while assessing new model: " + e);
+            throw new InvalidModelFileException(model, "Error while assessing new model: " + e);
         }
 
+        return ResponseEntity.ok(m);
+    }
+
+    @PostMapping("/load/details")
+    public ResponseEntity<Model> loadModelFromFile(@RequestParam(value="id") Long modelId, @RequestParam("plot") Optional<MultipartFile> plot, @RequestParam("properties") Optional<MultipartFile> properties) {
+        Model m = this.modelService.getModelById(modelId);
+        Path path = Paths.get(m.getFilepath());
+        
+        // Copy plot to same directory if present
+        if (plot.isPresent()) {
+            Path destinationFile = path.resolve(Paths.get(plot.get().getOriginalFilename())).normalize().toAbsolutePath();
+            try (InputStream inputStream = plot.get().getInputStream()) {
+                Files.copy(inputStream, destinationFile, StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException e) {
+                throw new FailedRequirementException(e,  "Unable to move seaborn plot file '" + plot.get().getName() + "' to destination: " + destinationFile);
+            }
+        }
+
+        // Copy properties to same directory if present
+        if (properties.isPresent()) {
+            Path destinationFile = path.resolve(Paths.get(properties.get().getOriginalFilename())).normalize().toAbsolutePath();
+            try (InputStream inputStream = properties.get().getInputStream()) {
+                Files.copy(inputStream, destinationFile, StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException e) {
+                throw new FailedRequirementException(e,  "Unable to move properties file '" + properties.get().getName() + "' to destination: " + destinationFile);
+            }
+        }
+
+        m = m.findPlotForKey();
+        m = m.findPropertiesForKey();
+        this.modelService.updateModelInRepository(m);
         return ResponseEntity.ok(m);
     }
 
