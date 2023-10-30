@@ -1,16 +1,13 @@
-package com.jtrull.alzdetection;
+package com.jtrull.alzdetection.general;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.UUID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 
 @Component
 public class Utils {
-    private static final Logger LOGGER = LoggerFactory.getLogger(Utils.class);
     
     public static final String DATASET_NAME = "Combined Dataset";
     public static final String ARCHIVE_FORMAT = ".zip";
@@ -53,11 +50,6 @@ public class Utils {
 
     public static String testImagePath() {
         return returnImagePath() + "/" + DATASET_NAME + "/test/";
-    }
-
-
-    public static Logger getLogger() {
-        return LOGGER;
     }
 
     public static String getDatasetName() {

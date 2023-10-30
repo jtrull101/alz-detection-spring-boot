@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 
 import com.jtrull.alzdetection.exceptions.generic.FailedRequirementException;
 import com.jtrull.alzdetection.exceptions.generic.UnexpectedDeleteErrException;
+import com.jtrull.alzdetection.exceptions.generic.UnrecognizedEndpointException;
 import com.jtrull.alzdetection.exceptions.model.InvalidModelConfigurationException;
 import com.jtrull.alzdetection.exceptions.model.InvalidModelFileException;
 import com.jtrull.alzdetection.exceptions.model.ModelNotFoundException;
@@ -97,6 +98,15 @@ public class GlobalExceptionHandler {
         return ResponseEntity
             .status(HttpStatus.NOT_ACCEPTABLE)
             .body(new ErrorResponse(HttpStatus.NOT_ACCEPTABLE.value(), 
+                ex.getMessage(), 
+                ex.getDetails()));
+    }
+
+    @ExceptionHandler(UnrecognizedEndpointException.class)
+    public ResponseEntity<ErrorResponse> handleUnrecognizedEndpointException(UnrecognizedEndpointException ex) {
+        return ResponseEntity
+            .status(HttpStatus.BAD_REQUEST)
+            .body(new ErrorResponse(HttpStatus.BAD_REQUEST.value(), 
                 ex.getMessage(), 
                 ex.getDetails()));
     }

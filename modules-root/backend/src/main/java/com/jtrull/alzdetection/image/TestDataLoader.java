@@ -16,7 +16,7 @@ import java.util.zip.ZipInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.jtrull.alzdetection.Utils;
+import com.jtrull.alzdetection.general.Utils;
 import com.jtrull.alzdetection.exceptions.generic.FailedRequirementException;
 import com.jtrull.alzdetection.prediction.ImpairmentEnum;
 

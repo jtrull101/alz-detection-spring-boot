@@ -14,12 +14,14 @@ import { ImagePredictDeleteComponent } from './components/images/image-predict-d
 import { PageBodyComponent } from './components/page components/page-body/page-body.component';
 import { HomeComponent } from './components/home/home.component';
 import { ImageDetailsComponent } from './components/images/image-details/image-details.component';
+import { ModelPlotComponent } from './components/model/model-plot/model-plot.component';
 const routes: Routes = [
     { path: '', component: PageBodyComponent, children: [
       { path: '', component: HomeComponent },
       { path: 'model', component: ModelDetailsComponent },
       { path: 'model/load', component: LoadModelComponent },
       { path: 'model/all', component: ModelListComponent },
+      { path: 'model/plot', component: ModelPlotComponent },
       { path: 'model/delete', component: ModelDeleteComponent },
       { path: 'model/delete/all', component: ModelDeleteAllComponent },
       { path: 'model/predict', component: ImagePredictComponent },

@@ -21,11 +21,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.jtrull.alzdetection.Utils;
 import com.jtrull.alzdetection.exceptions.generic.FailedRequirementException;
 import com.jtrull.alzdetection.exceptions.generic.UnexpectedDeleteErrException;
 import com.jtrull.alzdetection.exceptions.model.InvalidModelFileException;
 import com.jtrull.alzdetection.exceptions.model.ModelNotFoundException;
+import com.jtrull.alzdetection.general.Utils;
 import com.jtrull.alzdetection.image.ImagePrediction;
 import com.jtrull.alzdetection.image.ImageRepository;
 import com.jtrull.alzdetection.prediction.ImpairmentEnum;
@@ -80,7 +80,7 @@ public class ModelService {
 
         // create directories where uploaded models are stored
         try {
-            Files.createDirectories(Paths.get(Utils.returnModelPath()));
+            Files.createDirectories(Paths.get(com.jtrull.alzdetection.general.Utils.returnModelPath()));
         } catch (Exception ex) {
             throw new FailedRequirementException(ex, HttpStatus.CONFLICT, 
                 "Could not create the directory where uploaded model files will be stored.");
@@ -172,6 +172,8 @@ public class ModelService {
     public Model loadDefaultModel() {
         File resource = findModelResourceInDir(DEFAULT_MODEL_NAME);
         Model m = createModelFromFilepath(resource);
+
+
         return modelRepository.save(m);
     }
 
@@ -191,7 +193,8 @@ public class ModelService {
     }
 
     /**
-     * Get the model at the specified Id
+     * Get the model at the specified ID in the modelRepository. If unable to be found,
+     * throw ModelNotFoundException.
      * 
      * @param modelId
      * @return
@@ -204,7 +207,9 @@ public class ModelService {
     }
 
     /**
-     * TODO:
+     * Iterate through all in-memory models, find the model with the specified ID and return.
+     * If unable to be found, throw ModelNotFoundException.
+     * 
      * @param modelId
      * @return
      */
@@ -243,6 +248,7 @@ public class ModelService {
             synchronized (inMemoryModels) {
                 Optional<InMemoryModel> opt = inMemoryModels.stream().filter(m -> m.getId() == modelId).findFirst();
                 if (opt.isPresent()) {
+                    opt.get().close();
                     inMemoryModels.remove(opt.get());
                 }
             }
@@ -274,6 +280,7 @@ public class ModelService {
             synchronized (inMemoryModels) {
                 List<InMemoryModel> removable = inMemoryModels.stream()
                     .filter(m -> m.getId() != 1)
+                    .map(m->m.close())
                     .collect(Collectors.toList());
                 inMemoryModels.removeAll(removable);
                 
@@ -392,51 +399,29 @@ public class ModelService {
             inMemoryModels.add(inMemModel);
         }
 
-        // TODO:
+        if (modelRepository.findById(m.getId()).isPresent() && !modelRepository.findById(m.getId()).get().equals(m)) {
+            synchronized (modelRepository) {
+                modelRepository.save(m);
+            }
+        }
+        
         // trainModelOnTestData(inMemModel);
 
         return inMemoryModels;
     }
 
-    // private void trainModelOnTestData(InMemoryModel inMemModel) {
 
-    //     NDManager manager = NDManager.newBaseManager();
-    //     ai.djl.Model djlModel = inMemModel.getLoadedModel().getWrappedModel();
-    //     DefaultTrainingConfig config = new DefaultTrainingConfig(Loss.maskedSoftmaxCrossEntropyLoss())
-    //         .addEvaluator(new Accuracy())
-    //         .addTrainingListeners(TrainingListener.Defaults.logging());
-            
-    //     Trainer trainer = null;
-    //     try{
-    //         trainer = djlModel.newTrainer(config);
-    //     } catch (Exception e) {
-    //         System.out.println(e);
-    //     }
-        
-
-    //     int batchSize = 32;
-    //     trainer.initialize(new Shape(batchSize,3,128,128));
-
-    //     MRIImageDataset dataset;
-    //     try {
-    //         dataset = new MRIImageDataset.Builder().build();
-    //     } catch (IOException e) {
-    //         throw new RuntimeException(e);
-    //     }
-
-    //     try {
-    //         EasyTrain.evaluateDataset(trainer, dataset);
-    //     } catch (IOException | TranslateException e) {
-    //         throw new RuntimeException(e);
-    //     }
-    // }
 
     /**
      * Initialize the in-memory models by finding all Models in the ModelRepository
      * and adding in-memory representations of them.
      */
     public void initInMemoryModels() {
-        modelRepository.findAll().stream().forEach(m -> addModelToInMemoryModels(m));
+        modelRepository.findAll().stream().forEach(m -> {
+            m = m.findPlotForKey();
+            m = m.findPropertiesForKey();
+            addModelToInMemoryModels(m);
+        });
     }
 
     /**

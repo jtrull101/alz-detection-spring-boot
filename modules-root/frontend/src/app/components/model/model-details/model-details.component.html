@@ -6,8 +6,31 @@
   <div class="row mt-5">
     <div class="col-md-4">
       <br class="mb-3">
-      ID: {{ model.id }}<br>
-      NAME: {{ model.name }}<br>
+
+      <!--Turn this data into a table?-->
+      Id: {{ model.id }}<br>
+      Name: {{ model.name }}<br>
+
+      <div *ngIf="model.loss">
+        <br>
+        Accuracy: {{ model.accuracy }}%<br>
+        Loss: {{ model.loss }}<br>
+      </div>
+      <div *ngIf="!model.loss">
+        <br>
+        Unable to find properties file for this model!
+      </div>
+
+      <div *ngIf="img" style="max-width:400px">
+        <br>
+        <img src={{img}} style="max-width:400%;" />
+      </div>
+      <div *ngIf="!img" style="max-width:400px">
+        <br>
+        Unable to find seaborn plot for this model!
+      </div>
+
+
     </div>
   </div>
 </div>

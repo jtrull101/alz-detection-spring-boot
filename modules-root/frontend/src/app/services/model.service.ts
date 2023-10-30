@@ -26,6 +26,11 @@ export class ModelService {
     return this.http.post(`${baseUrl}/load`, file);
   }
 
+  getPlot(id:number|undefined): Observable<Blob> {
+    console.log("getPlot for url: " + `${baseUrl}/plot?id=${id}`)
+    return this.http.get(`${baseUrl}/plot?id=${id}`, { responseType: 'blob' });
+  }
+
   delete(id:any): Observable<any> {
     return this.http.delete(`${baseUrl}/delete?id=${id}`);
   }

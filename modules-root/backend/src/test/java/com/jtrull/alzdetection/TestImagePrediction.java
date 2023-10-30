@@ -32,6 +32,7 @@ import com.jtrull.alzdetection.model.Model;
 import com.jtrull.alzdetection.model.ModelRepository;
 import com.jtrull.alzdetection.model.ModelService;
 import com.jtrull.alzdetection.prediction.ImpairmentEnum;
+import com.jtrull.alzdetection.general.Utils;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -261,17 +262,15 @@ public class TestImagePrediction {
         ImagePrediction initialPrediction = getInitialImagePrediction();
         long invalidId = 2345234523452345L;
         String url = createGetPredictionUrl(invalidId, initialPrediction.getId());
-       
-            mvc.perform(get(url)
-                .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().is4xxClientError())
-                .andExpect(result -> assertTrue("Unexpected exception type!", 
-                    result.getResolvedException() instanceof PredictionNotFoundException))
-                .andExpect(result -> assertTrue("Unexpected message:" + result.getResolvedException().getMessage(), 
-                    result.getResolvedException().getMessage().contains(PredictionNotFoundException.MESSAGE)));
+        mvc.perform(get(url)
+            .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().is4xxClientError())
+            .andExpect(result -> assertTrue("Unexpected exception type!", 
+                result.getResolvedException() instanceof PredictionNotFoundException))
+            .andExpect(result -> assertTrue("Unexpected message:" + result.getResolvedException().getMessage(), 
+                result.getResolvedException().getMessage().contains(PredictionNotFoundException.MESSAGE)));
          
     }
-    
 
     /**
 	 * Run all tests in class concurrently
@@ -287,17 +286,15 @@ public class TestImagePrediction {
     }
 
     /**
-     * TODO:
+     * Delete 
      * @throws Exception
      */
     @Order(5)
     @RepeatedTest(TEST_INVOCATIONS)
     public void testDeletePrediction() throws Exception {
-        Optional<ImagePrediction> imageOpt = imageRepository.findAll().stream()
-            .filter(i -> i.getAssociatedModel() == 1L).findFirst();
+        Optional<ImagePrediction> imageOpt = imageRepository.findAll().stream().filter(i -> i.getAssociatedModel() == 1L).findFirst();
         if (imageOpt.isEmpty()) {
-            String url = createPredictUrl(getModel(1L).getId());
-            mvc.perform(get(url + "/random")
+            mvc.perform(get(createPredictUrl(getModel(1L).getId()) + "/random")
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().is2xxSuccessful());
             imageOpt = imageRepository.findAll().stream().filter(i -> i.getAssociatedModel() == 1L).findFirst();
@@ -315,7 +312,8 @@ public class TestImagePrediction {
     }
 
     /**
-     * TODO:
+     * Attempt to delete an ImagePrediction with invalid ID and validate it is unsuccessful
+     * 
      * @throws Exception
      */
     @Order(5)
@@ -330,6 +328,25 @@ public class TestImagePrediction {
             .andExpect(result -> assertTrue("Unexpected message:" + result.getResolvedException().getMessage(), 
                 result.getResolvedException().getMessage().contains(PredictionNotFoundException.MESSAGE)));
     }
+
+    /**
+     * 
+     * @throws Exception
+     */
+    @Order(6)
+    @RepeatedTest(TEST_INVOCATIONS)
+    public void testBatchPredictTestImages() throws Exception {
+        String url = createPredictUrl(getModel().getId()) + "/test";
+        MvcResult result = mvc.perform(get(url)
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andReturn();
+        String content = result.getResponse().getContentAsString();
+        assertNotNull("Unable to read content from result of prediction GET request to URL:" + url, content);
+        List<ImagePrediction> predictions = Arrays.asList(MAPPER.readValue(content, ImagePrediction[].class));
+        assertNotNull("Unable to marshall predictions object from content:" + content, predictions);
+    }
+    
 
     private String createPredictUrl(Long modelId) {
         return BASE_URL + "/" + String.valueOf(modelId) + "/predict";

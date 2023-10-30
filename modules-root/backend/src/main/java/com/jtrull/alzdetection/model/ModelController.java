@@ -1,5 +1,6 @@
 package com.jtrull.alzdetection.model;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -12,6 +13,7 @@ import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -24,7 +26,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.jtrull.alzdetection.exceptions.generic.FailedRequirementException;
 import com.jtrull.alzdetection.exceptions.model.InvalidModelFileException;
+import com.jtrull.alzdetection.exceptions.model.ModelNotFoundException;
 import com.jtrull.alzdetection.image.ImageService;
+
 
 @RestController
 @RequestMapping(path = "api/v1/model")
@@ -101,6 +105,19 @@ public class ModelController {
     @GetMapping("/all")
     public ResponseEntity<List<Model>> getAllModels() {
         return ResponseEntity.ok(this.modelService.getAllModels());
+    }
+
+    @GetMapping(value="/plot", produces=MediaType.IMAGE_PNG_VALUE)
+    public ResponseEntity<byte[]> getPlotById(@RequestParam(value="id") Long modelId) {
+        String plotPath = this.modelService.getModelById(modelId).getSeabornPlotPath();
+        if (plotPath == null) {
+            throw new ModelNotFoundException(modelId, "Unable to find seaborn plot for specified model Id");
+        }
+        try {
+            return ResponseEntity.ok(Files.readAllBytes(Paths.get(plotPath)));
+        } catch (IOException e) {
+            throw new InvalidModelFileException(new File(plotPath), "IO exception message: " + e.getMessage());
+        }
     }
 
     // DELETE mappings

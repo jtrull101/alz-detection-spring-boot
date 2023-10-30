@@ -63,7 +63,7 @@ public class Model {
         try {
             File plot = Files.walk(Paths.get(filepath))
                         .filter(Files::isRegularFile).map(r -> r.toFile())
-                        .peek(r -> LOGGER.info(r.getName()))
+                        .peek(r -> LOGGER.trace("searching for plot from file '" + r.getName() + "'' matching key '" + key + "'"))
                         .filter(r -> r.toString().contains("seaborn-plot-"))
                         .filter(r -> r.toString().contains(".png"))
                         .filter(r -> r.toString().contains(key))
@@ -85,7 +85,7 @@ public class Model {
         try {
             File properties = Files.walk(Paths.get(filepath))
                         .filter(Files::isRegularFile).map(r -> r.toFile())
-                        .peek(r -> LOGGER.info(r.getName()))
+                        .peek(r -> LOGGER.trace("searching for properties from file '" + r.getName() + "'' matching key '" + key + "'"))
                         .filter(r -> r.toString().contains("history-"))
                         .filter(r -> r.toString().contains(".properties"))
                         .filter(r -> r.toString().contains(key))

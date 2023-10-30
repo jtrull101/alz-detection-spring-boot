@@ -31,6 +31,7 @@ import com.jtrull.alzdetection.exceptions.model.ModelNotFoundException;
 import com.jtrull.alzdetection.model.Model;
 import com.jtrull.alzdetection.model.ModelRepository;
 import com.jtrull.alzdetection.model.ModelService;
+import com.jtrull.alzdetection.general.Utils;
 
 import jakarta.servlet.ServletException;
 

@@ -18,7 +18,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.jtrull.alzdetection.Utils;
+import com.jtrull.alzdetection.general.Utils;
 import com.jtrull.alzdetection.exceptions.generic.FailedRequirementException;
 import com.jtrull.alzdetection.exceptions.predictions.PredictionFailureException;
 import com.jtrull.alzdetection.exceptions.predictions.PredictionNotFoundException;
@@ -56,10 +56,7 @@ public class ImageService {
                 throw new PredictionFailureException(file, "Failed to store empty file");
             }
             
-            // TOOD: Uncomment if interested in not running the prediction if filenames are the same
-            //      String filename = (file.getOriginalFilename() == null) ? file.getName() + file.getBytes().hashCode() : file.getOriginalFilename();
-            String filename = file.getName() + file.getBytes().hashCode();
-
+            String filename = file.getOriginalFilename() + file.getBytes().hashCode();
             Path newPath = Paths.get(Utils.returnImagePath() + "/"  + modelId + "/" + filename.hashCode());
             Files.createDirectories(newPath);
             destinationFile = newPath.resolve(Paths.get(filename)).normalize().toAbsolutePath();
@@ -161,7 +158,7 @@ public class ImageService {
     }
 
     /**
-     * TODO
+     * Run a batch prediction on the model using every test file
      * 
      * @param modelId
      * @return
@@ -204,6 +201,4 @@ public class ImageService {
         }
         return prediction;
     }
-
-   
 }

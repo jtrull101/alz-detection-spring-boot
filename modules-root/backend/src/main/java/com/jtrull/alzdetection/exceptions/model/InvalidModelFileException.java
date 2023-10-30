@@ -1,5 +1,6 @@
 package com.jtrull.alzdetection.exceptions.model;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -25,7 +26,13 @@ public class InvalidModelFileException extends HttpClientErrorException{
     }
     public InvalidModelFileException(MultipartFile file, String... details) {
         super(CODE, MESSAGE);
-        this.details = Arrays.asList(details);
+        this.details = new ArrayList<>(Arrays.asList(details));
+    }
+    public InvalidModelFileException(File file, String... details) {
+        super(CODE, MESSAGE);
+        this.details = new ArrayList<>(Arrays.asList(details));
+        this.details.add(file.toString().contains(".png") ? "Unable to read seaborn plot from file" : 
+            "Unable to read properties from file");
     }
     public InvalidModelFileException(Criteria<Image, Classifications> criteria, String... details) {
         super(CODE, MESSAGE);
@@ -34,7 +41,6 @@ public class InvalidModelFileException extends HttpClientErrorException{
         for (String s : Arrays.asList(split)){
             this.details.add(s.replace("\t", "  "));
         }
-
     }
 
     public List<String> getDetails() {

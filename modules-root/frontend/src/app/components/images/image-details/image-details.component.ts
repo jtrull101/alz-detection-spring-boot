@@ -63,9 +63,9 @@ export class ImageDetailsComponent {
           console.log("this.file: " + this.file)
 
           if (this.file) {
-            const paths = this.prediction.filepath.split("/");
-            const category = paths[paths.length-2];
-            const filename = paths[paths.length-1];
+            var paths = this.prediction.filepath.split("/");
+            var category = paths[paths.length-2];
+            var filename = paths[paths.length-1];
             this.img = "assets/test/" + category + "/" + filename;
           }
         },
