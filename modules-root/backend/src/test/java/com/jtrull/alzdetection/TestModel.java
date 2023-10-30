@@ -164,11 +164,10 @@ public class TestModel {
 
 				String content = _return.getResponse().getContentAsString();
 				assertNotNull("Unable to find content after loading model plot through /details endpoint", content);
-				try {
-					modelFromService = MAPPER.readValue(content, Model.class);
-					assertNotNull("Unable to find seaborn plot path after pushing plot to /details endpoint", modelFromService.getSeabornPlotPath());
-					return modelFromService;
-				} catch (JsonProcessingException e) { fail("Return from model /load/details unable to parse to Model object!"); }	
+				
+				modelFromService = modelService.getModelById(m.getId());
+				assertNotNull("Unable to find seaborn plot path after pushing plot to /details endpoint", modelFromService.getSeabornPlotPath());
+				return modelFromService;
 			} 
 
 		// 33% of the time just send properties
@@ -182,12 +181,11 @@ public class TestModel {
 
 				String content = _return.getResponse().getContentAsString();
 				assertNotNull("Unable to find content after loading model properties through /details endpoint", content);
-				try {
-					modelFromService = MAPPER.readValue(content, Model.class);
-					assertNotNull("Unable to find loss after pushing plot to /details endpoint", modelFromService.getLoss());
-					assertNotNull("Unable to find accuracy after pushing plot to /details endpoint", modelFromService.getAccuracy());
-					return modelFromService;
-				} catch (JsonProcessingException e) { fail("Return from model /load/details unable to parse to Model object!"); }	
+
+				modelFromService = modelService.getModelById(m.getId());
+				assertNotNull("Unable to find loss after pushing plot to /details endpoint", modelFromService.getLoss());
+				assertNotNull("Unable to find accuracy after pushing plot to /details endpoint", modelFromService.getAccuracy());
+				return modelFromService;
 			} 
 		} else {
 			Pair<File, MockMultipartFile> plotPair = getPlotFile(parent, modelName);
@@ -203,19 +201,15 @@ public class TestModel {
 
 					String content = _return.getResponse().getContentAsString();
 					assertNotNull("Unable to find content after loading model properties through /details endpoint", content);
-					try {
-						modelFromService = MAPPER.readValue(content, Model.class);
-						assertNotNull("Unable to find seaborn plot path after pushing plot to /details endpoint", modelFromService.getSeabornPlotPath());
-						assertNotNull("Unable to find loss after pushing plot to /details endpoint", modelFromService.getLoss());
-						assertNotNull("Unable to find accuracy after pushing plot to /details endpoint", modelFromService.getAccuracy());
-						return modelFromService;
-					} catch (JsonProcessingException e) { fail("Return from model /load/details unable to parse to Model object!"); }
+
+					modelFromService = modelService.getModelById(m.getId());
+					assertNotNull("Unable to find seaborn plot path after pushing plot to /details endpoint", modelFromService.getSeabornPlotPath());
+					assertNotNull("Unable to find loss after pushing plot to /details endpoint", modelFromService.getLoss());
+					assertNotNull("Unable to find accuracy after pushing plot to /details endpoint", modelFromService.getAccuracy());
+					return modelFromService;
 				}
 			}
 		}
-		throw new AssertionError("Unable to load model details for specified model!");
-
-
 	}
 
 	/**
