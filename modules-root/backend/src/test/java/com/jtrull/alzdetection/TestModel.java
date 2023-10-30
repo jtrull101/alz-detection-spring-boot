@@ -2,6 +2,7 @@ package com.jtrull.alzdetection;
 
 import org.javatuples.Pair;
 import org.json.JSONObject;
+import org.junit.Ignore;
 import org.junit.experimental.ParallelComputer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.RepeatedTest;
