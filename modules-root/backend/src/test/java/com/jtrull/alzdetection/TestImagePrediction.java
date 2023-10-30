@@ -370,7 +370,7 @@ public class TestImagePrediction {
             List<Model> allModels = modelRepository.findAll();
             // load models into the model repository
             for (int i = allModels.size(); i<=10; i++) {
-                TestModel.runLoadModelRequest(modelService, getClass(), mvc);
+                TestModel.runLoadModelRequest(modelService, getClass(), mvc, false);
             }
             allModels = modelRepository.findAll();
 

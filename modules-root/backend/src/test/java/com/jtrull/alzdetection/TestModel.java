@@ -83,16 +83,25 @@ public class TestModel {
 	@Order(1)
 	@RepeatedTest(TEST_INVOCATIONS)
 	public void testLoadModel() throws Exception {
-		Model m = runLoadModelRequest(modelService, getClass(), mvc);
+		Model m = runLoadModelRequest(modelService, getClass(), mvc, false);
 		assertNotNull("Unable to find Model object after load model request", m);
 	}
 
 	@Order(1)
 	@RepeatedTest(TEST_INVOCATIONS)
 	public void testLoadModelPropertiesAndOrPlot() throws Exception {
-		Model model = runLoadModelRequest(modelService, getClass(), mvc);
-		model = runLoadModelDetailsRequest(model.getId(), modelService, getClass(), mvc);
+		Model model = runLoadModelRequest(modelService, getClass(), mvc, true);
 		assertNotNull("Unable to find Model object after load details request", model);
+	}
+
+	@Order(1)
+	@RepeatedTest(TEST_INVOCATIONS)
+	public void testGetDefaultModelPropertiesAndPlot() throws Exception {
+		Model m = runGetModelRequest(Optional.empty());
+		Model modelFromService = modelService.getModelById(m.getId());
+		assertNotNull("Unable to find seaborn plot path for default model", modelFromService.getSeabornPlotPath());
+		assertNotNull("Unable to find loss for default model", modelFromService.getLoss());
+		assertNotNull("Unable to find accuracy for default model", modelFromService.getAccuracy());
 	}
 
 	/**
@@ -105,11 +114,12 @@ public class TestModel {
 	 * @return
 	 * @throws Exception
 	 */
-	public static <T> Model runLoadModelRequest(ModelService modelService, Class<T> clazz, MockMvc mvc) throws Exception {
+	public static <T> Model runLoadModelRequest(ModelService modelService, Class<T> clazz, MockMvc mvc, boolean withDetails) throws Exception {
 		String path = getModelPath(modelService);
         String filename = path.substring(path.lastIndexOf("/")+1);
 		String modelName = new Random().nextInt(1000) + "-" + filename;
 		FileInputStream fis = new FileInputStream(path);
+		Model m = null;
 
 		try (InputStream is = clazz.getResourceAsStream(path)) {
 			MockMultipartFile mockMultipartFile = new MockMultipartFile("model", modelName, "application/zip", ByteStreams.toByteArray(fis));
@@ -122,32 +132,24 @@ public class TestModel {
 
 			String content = _return.getResponse().getContentAsString();
 			assertNotNull("Unable to find content after loading model through /load endpoint", content);
-			Model m = null;
+			
 			try {
 				m = MAPPER.readValue(content, Model.class);
 			} catch (JsonProcessingException e) { fail("Return from model /load unable to parse to Model object!"); }
 			// Include modelName in request so we can assert the model was created with the correct ZIP file
 			
 			assertTrue("Model after create request returned with different name - this is not intended", m.getName().equals(modelName));
-			return m;
+			
 		} 
-	}
+		if (!withDetails) {
+			return m;
+		}
 
-	/**
-	 * 
-	 * @param <T>
-	 * @param modelService
-	 * @param clazz
-	 * @param mvc
-	 * @return
-	 * @throws Exception
-	 */
-	public static <T> Model runLoadModelDetailsRequest(Long modelId, ModelService modelService, Class<T> clazz, MockMvc mvc) throws Exception {
-		String path = getModelPath(modelService);
-        String filename = path.substring(path.lastIndexOf("/")+1);
-		String modelName = new Random().nextInt(1000) + "-" + filename;
-		
-		File modelFile = new File(path);
+		Model modelFromService = modelService.getModelById(m.getId());
+
+		// use model's filepath 
+		String modelPath = modelFromService.getFilepath();	
+		File modelFile = new File(modelPath);
 		String parent = modelFile.getParent();
 		double rand = Math.random();
 
@@ -155,7 +157,7 @@ public class TestModel {
 		if (rand <= 0.33) {
 			Pair<File, MockMultipartFile> plotPair = getPlotFile(parent, modelName);
 			try (InputStream is = clazz.getResourceAsStream(plotPair.getValue0().getAbsolutePath())) {
-				MvcResult _return = mvc.perform(MockMvcRequestBuilders.multipart(LOAD_DETAILS_URL + modelId)
+				MvcResult _return = mvc.perform(MockMvcRequestBuilders.multipart(LOAD_DETAILS_URL + modelFromService.getId())
 							.file(plotPair.getValue1()))
 						.andExpect(status().isOk())
 						.andReturn();
@@ -163,9 +165,9 @@ public class TestModel {
 				String content = _return.getResponse().getContentAsString();
 				assertNotNull("Unable to find content after loading model plot through /details endpoint", content);
 				try {
-					Model m = MAPPER.readValue(content, Model.class);
-					assertNotNull("Unable to find seaborn plot path after pushing plot to /details endpoint", m.getSeabornPlotPath());
-					return m;
+					modelFromService = MAPPER.readValue(content, Model.class);
+					assertNotNull("Unable to find seaborn plot path after pushing plot to /details endpoint", modelFromService.getSeabornPlotPath());
+					return modelFromService;
 				} catch (JsonProcessingException e) { fail("Return from model /load/details unable to parse to Model object!"); }	
 			} 
 
@@ -173,7 +175,7 @@ public class TestModel {
 		} else if (rand <= 0.66) {
 			Pair<File, MockMultipartFile> propertiesPair = getPropertiesFile(parent, modelName);
 			try (InputStream is = clazz.getResourceAsStream(propertiesPair.getValue0().getAbsolutePath())) {
-				MvcResult _return = mvc.perform(MockMvcRequestBuilders.multipart(LOAD_DETAILS_URL + modelId)
+				MvcResult _return = mvc.perform(MockMvcRequestBuilders.multipart(LOAD_DETAILS_URL + modelFromService.getId())
 							.file(propertiesPair.getValue1()))
 						.andExpect(status().isOk())
 						.andReturn();
@@ -181,10 +183,10 @@ public class TestModel {
 				String content = _return.getResponse().getContentAsString();
 				assertNotNull("Unable to find content after loading model properties through /details endpoint", content);
 				try {
-					Model m = MAPPER.readValue(content, Model.class);
-					assertNotNull("Unable to find loss after pushing plot to /details endpoint", m.getLoss());
-					assertNotNull("Unable to find accuracy after pushing plot to /details endpoint", m.getAccuracy());
-					return m;
+					modelFromService = MAPPER.readValue(content, Model.class);
+					assertNotNull("Unable to find loss after pushing plot to /details endpoint", modelFromService.getLoss());
+					assertNotNull("Unable to find accuracy after pushing plot to /details endpoint", modelFromService.getAccuracy());
+					return modelFromService;
 				} catch (JsonProcessingException e) { fail("Return from model /load/details unable to parse to Model object!"); }	
 			} 
 		} else {
@@ -193,7 +195,7 @@ public class TestModel {
 			try (InputStream is = clazz.getResourceAsStream(plotPair.getValue0().getAbsolutePath())) {
 				try (InputStream _is = clazz.getResourceAsStream(propertiesPair.getValue0().getAbsolutePath())) {
 
-					MvcResult _return = mvc.perform(MockMvcRequestBuilders.multipart(LOAD_DETAILS_URL + modelId)
+					MvcResult _return = mvc.perform(MockMvcRequestBuilders.multipart(LOAD_DETAILS_URL + modelFromService.getId())
 							.file(propertiesPair.getValue1())
 							.file(plotPair.getValue1()))
 						.andExpect(status().isOk())
@@ -202,16 +204,18 @@ public class TestModel {
 					String content = _return.getResponse().getContentAsString();
 					assertNotNull("Unable to find content after loading model properties through /details endpoint", content);
 					try {
-						Model m = MAPPER.readValue(content, Model.class);
-						assertNotNull("Unable to find seaborn plot path after pushing plot to /details endpoint", m.getSeabornPlotPath());
-						assertNotNull("Unable to find loss after pushing plot to /details endpoint", m.getLoss());
-						assertNotNull("Unable to find accuracy after pushing plot to /details endpoint", m.getAccuracy());
-						return m;
+						modelFromService = MAPPER.readValue(content, Model.class);
+						assertNotNull("Unable to find seaborn plot path after pushing plot to /details endpoint", modelFromService.getSeabornPlotPath());
+						assertNotNull("Unable to find loss after pushing plot to /details endpoint", modelFromService.getLoss());
+						assertNotNull("Unable to find accuracy after pushing plot to /details endpoint", modelFromService.getAccuracy());
+						return modelFromService;
 					} catch (JsonProcessingException e) { fail("Return from model /load/details unable to parse to Model object!"); }
 				}
 			}
 		}
 		throw new AssertionError("Unable to load model details for specified model!");
+
+
 	}
 
 	/**
@@ -329,7 +333,7 @@ public class TestModel {
 			throw new Exception("unable to run get if no model exists yet");
 		}
 		Model model = modelRepository.findAll().get(0);
-		Model readModel = runGetModelRequest(model);
+		Model readModel = runGetModelRequest(Optional.of(model));
 		model.setFilepath(null); // filepath nullified during serialize
 		assertEquals("Model does not equal the expected object on return!", model, readModel);
 	}
@@ -340,14 +344,14 @@ public class TestModel {
 	 * @return
 	 * @throws Exception
 	 */
-	public Model runGetModelRequest(Model inputModel) throws Exception {
+	public Model runGetModelRequest(Optional<Model> inputModel) throws Exception {
 		// Grab the first model and assert we can get it
 		if (modelRepository.findAll().size() < 0) {
 			throw new Exception("unable to run get if no model exists yet");
 		}
 		Long modelId = modelRepository.findAll().get(0).getId();
-		if (inputModel != null) {
-			modelId = inputModel.getId();
+		if (inputModel.isPresent()) {
+			modelId = inputModel.get().getId();
 		}
 
 		MvcResult response = mvc.perform(get(BASE_URL + ID_KEY + modelId)

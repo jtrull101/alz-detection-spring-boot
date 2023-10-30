@@ -57,7 +57,8 @@ public class ModelService {
     Logger logger = LoggerFactory.getLogger(ModelService.class);
 
     private static final String SAVED_MODEL_ARCHIVE_EXTENSION = ".zip";
-    public static final String DEFAULT_MODEL_NAME = "saved_model-15_36_12_29_10_2023" + SAVED_MODEL_ARCHIVE_EXTENSION;
+    private static final String DEFAULT_MODEL_KEY = "14_57_38_30_10_2023";
+    public static final String DEFAULT_MODEL_NAME = "saved_model-" + DEFAULT_MODEL_KEY + SAVED_MODEL_ARCHIVE_EXTENSION;
 
     private List<InMemoryModel> inMemoryModels = new ArrayList<>();
 
@@ -153,8 +154,7 @@ public class ModelService {
         }
 
         // add model into memory with ID populated from repository
-        addModelToInMemoryModels(found.get());
-        return found.get();
+        return addModelToInMemoryModels(found.get());
     }
 
     public Model updateModelInRepository(Model updatedModel) {
@@ -346,8 +346,8 @@ public class ModelService {
         try {
             return Files.walk(Paths.get(path))
                     .filter(Files::isRegularFile)
-                    .filter(r -> r.toFile().getName().equals(filename))
-                    .map(x -> x.toFile())
+                    .map(r -> r.toFile())
+                    .filter(r -> r.getName().equals(filename))
                     .findFirst();
 
         } catch (IOException e) {
@@ -392,7 +392,7 @@ public class ModelService {
      * @param m
      * @return
      */
-    public List<InMemoryModel> addModelToInMemoryModels(Model m) {
+    public Model addModelToInMemoryModels(Model m) {
         Criteria<Image, Classifications> criteria = loadModelIntoTensorflow(m);
         InMemoryModel inMemModel = new InMemoryModel(this, m.getId(), criteria);
         synchronized (inMemoryModels) {
@@ -407,7 +407,7 @@ public class ModelService {
         
         // trainModelOnTestData(inMemModel);
 
-        return inMemoryModels;
+        return m;
     }
 
 
