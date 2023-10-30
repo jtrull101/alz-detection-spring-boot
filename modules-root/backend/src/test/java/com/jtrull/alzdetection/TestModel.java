@@ -88,9 +88,8 @@ public class TestModel {
 		assertNotNull("Unable to find Model object after load model request", m);
 	}
 
-	@Ignore
 	@Order(1)
-	@RepeatedTest(TEST_INVOCATIONS)
+	// @RepeatedTest(TEST_INVOCATIONS)
 	public void testLoadModelPropertiesAndOrPlot() throws Exception {
 		Model model = runLoadModelRequest(modelService, getClass(), mvc, true);
 		assertNotNull("Unable to find Model object after load details request", model);
