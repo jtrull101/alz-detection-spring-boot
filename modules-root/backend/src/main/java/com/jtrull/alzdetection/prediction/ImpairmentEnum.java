@@ -26,7 +26,8 @@ public enum ImpairmentEnum {
         return Stream.of(values())
             .filter(ie -> ie.toString().equals(val))
             .findFirst()
-            .orElseThrow(() -> new InvalidImpairmentCategoryException(val));
+            .orElseThrow(() -> 
+                new InvalidImpairmentCategoryException(val));
     }
 
     public static List<String> asStrings() {

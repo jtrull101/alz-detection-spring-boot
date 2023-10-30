@@ -13,7 +13,7 @@ import com.jtrull.alzdetection.exceptions.generic.UnrecognizedEndpointException;
 import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
-@RequestMapping
+@RequestMapping(path = "")
 @CrossOrigin(origins = "http://localhost:4200")
 public class BaseController implements ErrorController {
     Logger logger = LoggerFactory.getLogger(BaseController.class);

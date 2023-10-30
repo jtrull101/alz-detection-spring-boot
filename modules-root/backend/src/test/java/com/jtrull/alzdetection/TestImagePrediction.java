@@ -378,14 +378,16 @@ public class TestImagePrediction {
                 return allModels.stream()
                     .filter(m -> m.getId() == desiredId)
                     .findFirst()
-                    .orElseThrow(() -> new AssertionError("Unable to pick model with Id: " + desiredId));
+                    .orElseThrow(() -> 
+                        new AssertionError("Unable to pick model with Id: " + desiredId));
             }
 
             // pick a random model
             return allModels.stream()
                 .skip(new Random().nextInt(allModels.size()))
                 .findAny()
-                .orElseThrow(() -> new AssertionError("Unable to find a random model!"));
+                .orElseThrow(() -> 
+                    new AssertionError("Unable to find a random model!"));
         }
     }
 
