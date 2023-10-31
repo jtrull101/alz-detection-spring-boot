@@ -35,7 +35,7 @@ public class ModelController {
     // POST/CREATE mappings
 
     @PostMapping("/load")
-    public ResponseEntity<Model> loadModelFromFile(@RequestParam("file") MultipartFile file) {
+    public ResponseEntity<Model> loadModelFromFile(@RequestParam("model") MultipartFile file) {
         Model m = this.modelService.loadModelFromFile(file);
         try {
             logger.debug("running random prediction on new model: " + m.getId());

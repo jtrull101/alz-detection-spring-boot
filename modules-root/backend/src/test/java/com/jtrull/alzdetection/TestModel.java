@@ -99,7 +99,7 @@ public class TestModel {
 		FileInputStream fis = new FileInputStream(path);
 
 		try (InputStream is = clazz.getResourceAsStream(path)) {
-			MockMultipartFile mockMultipartFile = new MockMultipartFile("file", modelName, "application/zip", ByteStreams.toByteArray(fis));
+			MockMultipartFile mockMultipartFile = new MockMultipartFile("model", modelName, "application/zip", ByteStreams.toByteArray(fis));
 
 			MvcResult _return = mvc.perform(MockMvcRequestBuilders.multipart(LOAD_URL)
 						.file(mockMultipartFile)
@@ -130,7 +130,7 @@ public class TestModel {
 		String modelName = new Random().nextInt(1000) + "-" + filename;
 
 		try (InputStream is = getClass().getResourceAsStream(path)) {
-			MockMultipartFile mockMultipartFile = new MockMultipartFile("file", modelName, "application/zip", 
+			MockMultipartFile mockMultipartFile = new MockMultipartFile("model", modelName, "application/zip", 
 					ByteStreams.toByteArray(InputStream.nullInputStream()));
 
 			mvc.perform(MockMvcRequestBuilders.multipart(LOAD_URL)
@@ -164,7 +164,7 @@ public class TestModel {
 		FileInputStream fis = new FileInputStream(filepath);
 
 		try (InputStream is = getClass().getResourceAsStream(filepath)) {
-			MockMultipartFile mockMultipartFile = new MockMultipartFile("file", "test.json", MediaType.APPLICATION_JSON.toString(), ByteStreams.toByteArray(fis));
+			MockMultipartFile mockMultipartFile = new MockMultipartFile("model", "test.json", MediaType.APPLICATION_JSON.toString(), ByteStreams.toByteArray(fis));
 			
 			mvc.perform(MockMvcRequestBuilders.multipart(LOAD_URL)
 					.file(mockMultipartFile)
