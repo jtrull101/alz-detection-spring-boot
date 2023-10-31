@@ -5,7 +5,7 @@
   <div class="row mt-5">
     <div>
         <label for="formFile" class="form-label">Note that only .zips of valid Tensorflow models are accepted</label>
-        <input (change)="this.onFileChange($event)" class="form-control" type="model" id="formFile">
+        <input (change)="this.onFileChange($event)" class="form-control" type="file" id="formFile">
         <button (click)="this.upload()" type="button" class="btn btn-primary mt-3">Upload</button>
       </div>
   </div>
