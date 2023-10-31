@@ -88,3 +88,4 @@ testem.log
 Thumbs.db
 
 dist/
+modules-root/frontend/src/main/web/node/tmp/
