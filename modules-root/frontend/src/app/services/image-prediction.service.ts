@@ -10,7 +10,7 @@ export class ImagePredictionService {
 
   constructor(private http: HttpClient) { }
 
-  predictFromFile(file:any, modelId:number): Observable<ImagePrediction> {
+  predictFromFile(file:FormData, modelId:number): Observable<ImagePrediction> {
     return this.http.post(`${this.getBaseUrl(modelId)}`, file, {
       reportProgress: true
     });

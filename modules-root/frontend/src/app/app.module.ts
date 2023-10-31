@@ -3,7 +3,6 @@ import { BrowserModule } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
 import { HttpClientModule } from '@angular/common/http';
 
-
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { LoadModelComponent } from './components/model/load-model/load-model.component';
@@ -24,6 +23,7 @@ import { ModelService } from './services/model.service';
 import { ImagePredictionService } from './services/image-prediction.service';
 import { PageBodyComponent } from './components/page components/page-body/page-body.component';
 import { HomeComponent } from './components/home/home.component';
+import { ModelPlotComponent } from './components/model/model-plot/model-plot.component';
 
 
 @NgModule({
@@ -42,6 +42,7 @@ import { HomeComponent } from './components/home/home.component';
     MenuBodyComponent,
     PageBodyComponent,
     HomeComponent,
+    ModelPlotComponent,
   ],
   imports: [
     BrowserModule,

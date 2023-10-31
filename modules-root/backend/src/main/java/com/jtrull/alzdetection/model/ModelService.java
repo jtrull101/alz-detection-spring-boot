@@ -1,4 +1,4 @@
-package com.jtrull.alzdetection.Model;
+package com.jtrull.alzdetection.model;
 
 import java.io.File;
 import java.io.IOException;
@@ -21,14 +21,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.jtrull.alzdetection.Utils;
-import com.jtrull.alzdetection.Image.ImagePrediction;
-import com.jtrull.alzdetection.Image.ImageRepository;
-import com.jtrull.alzdetection.Prediction.ImpairmentEnum;
 import com.jtrull.alzdetection.exceptions.generic.FailedRequirementException;
 import com.jtrull.alzdetection.exceptions.generic.UnexpectedDeleteErrException;
 import com.jtrull.alzdetection.exceptions.model.InvalidModelFileException;
 import com.jtrull.alzdetection.exceptions.model.ModelNotFoundException;
+import com.jtrull.alzdetection.general.Utils;
+import com.jtrull.alzdetection.image.ImagePrediction;
+import com.jtrull.alzdetection.image.ImageRepository;
+import com.jtrull.alzdetection.prediction.ImpairmentEnum;
 
 import ai.djl.Application;
 import ai.djl.modality.Classifications;
@@ -36,8 +36,19 @@ import ai.djl.modality.Classifications.Classification;
 import ai.djl.modality.cv.Image;
 import ai.djl.modality.cv.translator.ImageClassificationTranslator;
 import ai.djl.modality.cv.util.NDImageUtils;
+// import ai.djl.ndarray.NDManager;
+// import ai.djl.ndarray.types.Shape;
 import ai.djl.repository.zoo.Criteria;
+// import ai.djl.training.DefaultTrainingConfig;
+// import ai.djl.training.EasyTrain;
+// import ai.djl.training.Trainer;
+// import ai.djl.training.evaluator.Accuracy;
+// import ai.djl.training.listener.TrainingListener;
+// import ai.djl.training.loss.Loss;
+// import ai.djl.training.optimizer.Optimizer;
+// import ai.djl.training.tracker.Tracker;
 import ai.djl.training.util.ProgressBar;
+// import ai.djl.translate.TranslateException;
 import ai.djl.translate.Translator;
 import jakarta.annotation.PostConstruct;
 
@@ -46,20 +57,18 @@ public class ModelService {
     Logger logger = LoggerFactory.getLogger(ModelService.class);
 
     private static final String SAVED_MODEL_ARCHIVE_EXTENSION = ".zip";
-    public static final String DEFAULT_MODEL_NAME = "default_model" + SAVED_MODEL_ARCHIVE_EXTENSION;
+    private static final String DEFAULT_MODEL_KEY = "14_57_38_30_10_2023";
+    public static final String DEFAULT_MODEL_NAME = "saved_model-" + DEFAULT_MODEL_KEY + SAVED_MODEL_ARCHIVE_EXTENSION;
 
     private List<InMemoryModel> inMemoryModels = new ArrayList<>();
 
     private final ModelRepository modelRepository;
     private final ImageRepository imageRepository;
-    private final Utils utils;
 
-    public ModelService(ModelRepository repository, ImageRepository imageRepository, Utils utils) {
+    public ModelService(ModelRepository repository, ImageRepository imageRepository) {
         this.modelRepository = repository;
         this.imageRepository = imageRepository;
-        this.utils = utils;
     }
-
 
     /**
      * Invoked after the constructor, perform initialization operations including:
@@ -72,7 +81,7 @@ public class ModelService {
 
         // create directories where uploaded models are stored
         try {
-            Files.createDirectories(Paths.get(this.utils.returnModelPath()));
+            Files.createDirectories(Paths.get(com.jtrull.alzdetection.general.Utils.returnModelPath()));
         } catch (Exception ex) {
             throw new FailedRequirementException(ex, HttpStatus.CONFLICT, 
                 "Could not create the directory where uploaded model files will be stored.");
@@ -92,22 +101,22 @@ public class ModelService {
      * @param file
      * @return Model - created from this input MultipartFile
      */
-    public Model loadModelFromFile(MultipartFile file) {
-        logger.trace("entered loadModelFromFile for file: " + file);
+    public Model loadModelFromFile(MultipartFile model) {
+        logger.trace("entered loadModelFromFile for model '" + model + "'");
         Path destinationFile;
 
         // Error checks
-        if (file.isEmpty()) {
-            throw new InvalidModelFileException(file, "Found empty file");
+        if (model.isEmpty()) {
+            throw new InvalidModelFileException(model, "Found empty file");
         }
-        if (!FilenameUtils.getExtension(file.getOriginalFilename()).equals("zip")) {
-            throw new InvalidModelFileException(file);
+        if (!FilenameUtils.getExtension(model.getOriginalFilename()).equals("zip")) {
+            throw new InvalidModelFileException(model);
         }
 
-        int hashDir = file.getName().hashCode();
+        int hashDir = Math.abs(model.getOriginalFilename().hashCode());
         // Create directory to hold new model, constructed of a hash of the model's name.
         // This assumption implies unique model zip names
-        Path newPath = Paths.get(this.utils.returnModelPath() + "/" + hashDir);
+        Path newPath = Paths.get(Utils.returnModelPath() + "/" + hashDir);
         try {
             Files.createDirectories(newPath);
         } catch (IOException e) {
@@ -115,38 +124,44 @@ public class ModelService {
         }
 
         // Copy the model .zip to the resources directory
-        destinationFile = newPath.resolve(Paths.get(file.getOriginalFilename())).normalize().toAbsolutePath();
-        try (InputStream inputStream = file.getInputStream()) {
+        destinationFile = newPath.resolve(Paths.get(model.getOriginalFilename())).normalize().toAbsolutePath();
+        try (InputStream inputStream = model.getInputStream()) {
             Files.copy(inputStream, destinationFile, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
-            throw new FailedRequirementException(e,  "Unable to move model zip file '" + file.getName() + "' to destination: " + destinationFile);
+            throw new FailedRequirementException(e,  "Unable to move model zip file '" + model.getName() + "' to destination: " + destinationFile);
         }
 
         // Find the model.zip in its subdirectory in the resources directory,
         // create a Model object and save to the database
         File resource = findModelResourceInDir(destinationFile.toFile().getName());
-        Model m = createModelFromFilepath(resource);
+        Model modelObj = createModelFromFilepath(resource);
 
         synchronized (modelRepository) {
-            modelRepository.save(m);
+            modelRepository.save(modelObj);
         }
 
         Optional<Model> found = modelRepository.findAll().stream()
-                .filter(model -> model.getFilepath().equals(resource.getParent()))
-                .filter(model -> model.getName().equals(resource.getName()))
+                .filter(m -> m.getFilepath().equals(resource.getParent()))
+                .filter(m -> m.getName().equals(resource.getName()))
                 .findAny();
 
         if (found.isEmpty()) {
             synchronized (modelRepository) {
-                modelRepository.delete(m);
+                modelRepository.delete(modelObj);
             }
             throw new FailedRequirementException(new NoSuchElementException(resource.toString()),  
                 "Unable to find model after create! Unable to validate model was created successfully. Deleting model.");
         }
 
         // add model into memory with ID populated from repository
-        addModelToInMemoryModels(found.get());
-        return found.get();
+        return addModelToInMemoryModels(found.get());
+    }
+
+    public Model updateModelInRepository(Model updatedModel) {
+        synchronized (modelRepository) {
+            modelRepository.save(updatedModel);
+        }
+        return updatedModel;
     }
 
     /**
@@ -157,6 +172,8 @@ public class ModelService {
     public Model loadDefaultModel() {
         File resource = findModelResourceInDir(DEFAULT_MODEL_NAME);
         Model m = createModelFromFilepath(resource);
+
+
         return modelRepository.save(m);
     }
 
@@ -176,7 +193,8 @@ public class ModelService {
     }
 
     /**
-     * Get the model at the specified Id
+     * Get the model at the specified ID in the modelRepository. If unable to be found,
+     * throw ModelNotFoundException.
      * 
      * @param modelId
      * @return
@@ -189,7 +207,9 @@ public class ModelService {
     }
 
     /**
-     * TODO:
+     * Iterate through all in-memory models, find the model with the specified ID and return.
+     * If unable to be found, throw ModelNotFoundException.
+     * 
      * @param modelId
      * @return
      */
@@ -228,6 +248,7 @@ public class ModelService {
             synchronized (inMemoryModels) {
                 Optional<InMemoryModel> opt = inMemoryModels.stream().filter(m -> m.getId() == modelId).findFirst();
                 if (opt.isPresent()) {
+                    opt.get().close();
                     inMemoryModels.remove(opt.get());
                 }
             }
@@ -259,6 +280,7 @@ public class ModelService {
             synchronized (inMemoryModels) {
                 List<InMemoryModel> removable = inMemoryModels.stream()
                     .filter(m -> m.getId() != 1)
+                    .map(m->m.close())
                     .collect(Collectors.toList());
                 inMemoryModels.removeAll(removable);
                 
@@ -324,8 +346,8 @@ public class ModelService {
         try {
             return Files.walk(Paths.get(path))
                     .filter(Files::isRegularFile)
-                    .filter(r -> r.toFile().getName().equals(filename))
-                    .map(x -> x.toFile())
+                    .map(r -> r.toFile())
+                    .filter(r -> r.getName().equals(filename))
                     .findFirst();
 
         } catch (IOException e) {
@@ -340,7 +362,7 @@ public class ModelService {
      * @return
      */
     public Optional<File> getSavedModelInResourcesDir(String filename) {
-        String path = this.utils.returnModelPath();
+        String path = Utils.returnModelPath();
         try {
             Optional<File> defaultModelInBasePath = returnFileFromPath(filename, path);
             if (defaultModelInBasePath.isPresent()) {
@@ -370,49 +392,36 @@ public class ModelService {
      * @param m
      * @return
      */
-    public List<InMemoryModel> addModelToInMemoryModels(Model m) {
+    public Model addModelToInMemoryModels(Model m) {
         Criteria<Image, Classifications> criteria = loadModelIntoTensorflow(m);
         InMemoryModel inMemModel = new InMemoryModel(this, m.getId(), criteria);
         synchronized (inMemoryModels) {
             inMemoryModels.add(inMemModel);
         }
 
-        // TODO:
+        if (modelRepository.findById(m.getId()).isPresent() && !modelRepository.findById(m.getId()).get().equals(m)) {
+            synchronized (modelRepository) {
+                modelRepository.save(m);
+            }
+        }
+        
         // trainModelOnTestData(inMemModel);
 
-        return inMemoryModels;
+        return m;
     }
 
-    // private void trainModelOnTestData(InMemoryModel inMemModel) {
 
-    //     NDManager manager = NDManager.newBaseManager();
-    //     ai.djl.Model djlModel = inMemModel.loadedModel.getWrappedModel();
-
-    //     Loss l2loss = Loss.l2Loss();
-    //     Tracker lrt = Tracker.fixed(0.03f);
-    //     Optimizer sgd = Optimizer.sgd().setLearningRateTracker(lrt).build();
-
-    //     DefaultTrainingConfig config = new DefaultTrainingConfig(l2loss)
-    //         .optOptimizer(sgd) // Optimizer (loss function)
-    //         .optDevices(manager.getEngine().getDevices(1)) // single GPU
-    //         .addTrainingListeners(TrainingListener.Defaults.logging()); // Logging
-            
-    //     Trainer trainer = djlModel.newTrainer(config);
-
-    //     int batchSize = 32;
-    //     trainer.initialize(new Shape(batchSize, 2));
-
-    //     // ImageDataset testIter = 
-
-    //     // EasyTrain.evaluateDataset(trainer, testIter);
-    // }
 
     /**
      * Initialize the in-memory models by finding all Models in the ModelRepository
      * and adding in-memory representations of them.
      */
     public void initInMemoryModels() {
-        modelRepository.findAll().stream().forEach(m -> addModelToInMemoryModels(m));
+        modelRepository.findAll().stream().forEach(m -> {
+            m = m.findPlotForKey();
+            m = m.findPropertiesForKey();
+            addModelToInMemoryModels(m);
+        });
     }
 
     /**

@@ -1,5 +1,6 @@
 package com.jtrull.alzdetection.exceptions.model;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -20,21 +21,27 @@ public class InvalidModelFileException extends HttpClientErrorException{
     private List<String> details = new ArrayList<>();
     
     public InvalidModelFileException(MultipartFile file, List<String> details) {
-        super(CODE, MESSAGE + file);
+        super(CODE, MESSAGE);
         this.details = details;
     }
     public InvalidModelFileException(MultipartFile file, String... details) {
-        super(CODE, MESSAGE + file);
-        this.details = Arrays.asList(details);
+        super(CODE, MESSAGE);
+        this.details = new ArrayList<>(Arrays.asList(details));
+    }
+    public InvalidModelFileException(File file, String... details) {
+        super(CODE, MESSAGE);
+        this.details = new ArrayList<>(Arrays.asList(details));
+        this.details.add(file.toString().contains(".png") ? "Unable to read seaborn plot from file" : 
+            "Unable to read properties from file");
     }
     public InvalidModelFileException(Criteria<Image, Classifications> criteria, String... details) {
-        super(CODE, MESSAGE + criteria);
-        this.details = Arrays.asList(details);
+        super(CODE, MESSAGE);
+        this.details = new ArrayList<>(Arrays.asList(details));
+        String[] split = criteria.toString().split("\n");
+        for (String s : Arrays.asList(split)){
+            this.details.add(s.replace("\t", "  "));
+        }
     }
-
-    //   public InvalidModelFileException(MultipartFile file) {
-    //     super(CODE, MESSAGE + file);
-    // }
 
     public List<String> getDetails() {
         return details;

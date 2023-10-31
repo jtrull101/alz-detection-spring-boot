@@ -1,4 +1,4 @@
-package com.jtrull.alzdetection.Image;
+package com.jtrull.alzdetection.image;
 
 import java.util.List;
 

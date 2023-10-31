@@ -1,10 +1,10 @@
-package com.jtrull.alzdetection.Image;
+package com.jtrull.alzdetection.image;
 
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
-import com.jtrull.alzdetection.Prediction.ImpairmentEnum;
+import com.jtrull.alzdetection.prediction.ImpairmentEnum;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;

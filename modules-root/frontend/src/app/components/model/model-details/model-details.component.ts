@@ -1,6 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import { Model } from 'src/app/models/model.model';
 import { ModelService } from 'src/app/services/model.service';
 
@@ -12,7 +12,9 @@ import { ModelService } from 'src/app/services/model.service';
 export class ModelDetailsComponent {
   title = 'Details for saved Tensorflow model:';
   model: Model;
-  id: any | undefined;
+  id: number | undefined;
+  plotFile: any;
+  img:any;
 
   constructor(private service: ModelService, private route: ActivatedRoute) {
     this.model = {
@@ -35,6 +37,15 @@ export class ModelDetailsComponent {
     this.service.get(this.id).subscribe(
       (response: Model) => {
         this.model = response;
+
+        if (this.model.seabornPlotPath!) {
+          const plot = this.service.getPlot(this.id);
+          let reader = new FileReader();
+          plot.forEach(plt => {
+            console.log("plt:" + plt)
+            this.img = URL.createObjectURL(plt);
+          });
+        }
       },
       (error: HttpErrorResponse) => {
         alert(error.message);

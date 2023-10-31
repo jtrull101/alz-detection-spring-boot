@@ -1,14 +1,14 @@
-package com.jtrull.alzdetection.Model;
+package com.jtrull.alzdetection.model;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import com.jtrull.alzdetection.Image.ImagePrediction;
-import com.jtrull.alzdetection.Prediction.ImpairmentEnum;
 import com.jtrull.alzdetection.exceptions.model.InvalidModelFileException;
 import com.jtrull.alzdetection.exceptions.predictions.PredictionFailureException;
+import com.jtrull.alzdetection.image.ImagePrediction;
+import com.jtrull.alzdetection.prediction.ImpairmentEnum;
 
 import ai.djl.MalformedModelException;
 import ai.djl.inference.Predictor;
@@ -28,9 +28,6 @@ public class InMemoryModel {
     private ZooModel<Image, Classifications> loadedModel;
     private Predictor<Image, Classifications> predictor;
 
-    // TODO: unused
-    // private Queue<PredictRequest> requests = new ArrayDeque<PredictRequest>();
-    // private boolean running = true;
 
     /**
      * 
@@ -116,6 +113,12 @@ public class InMemoryModel {
         }
     }
 
+    public InMemoryModel close() {
+        this.predictor.close();
+        this.loadedModel.close();
+        return this;
+    }
+
     public Long getId() {
         return id;
     }
@@ -127,5 +130,20 @@ public class InMemoryModel {
     }
     public void setCriteria(Criteria<Image, Classifications> criteria) {
         this.criteria = criteria;
+    }
+    public ModelService getModelService() {
+        return modelService;
+    }
+    public ZooModel<Image, Classifications> getLoadedModel() {
+        return loadedModel;
+    }
+    public void setLoadedModel(ZooModel<Image, Classifications> loadedModel) {
+        this.loadedModel = loadedModel;
+    }
+    public Predictor<Image, Classifications> getPredictor() {
+        return predictor;
+    }
+    public void setPredictor(Predictor<Image, Classifications> predictor) {
+        this.predictor = predictor;
     }
 }

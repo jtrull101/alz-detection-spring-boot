@@ -27,10 +27,11 @@
     <plugins>
       <plugin>
         <artifactId>maven-assembly-plugin</artifactId>
+        <version>3.6.0</version>
         <configuration>
           <archive>
             <manifest>
-              <mainClass>com.test.MainClassName</mainClass>
+              <mainClass>main</mainClass>
             </manifest>
           </archive>
           <descriptorRefs>
@@ -116,11 +117,10 @@
       </plugin>
     </plugins>
 
-    <resources>
+    <!-- <resources>
       <resource>
-        <!-- we copy the content of the frontend directory in the final artifact -->
         <directory>${project.basedir}/dist/${app.name}</directory>
       </resource>
-    </resources>
+    </resources> -->
   </build>
 </project>

@@ -1,6 +1,5 @@
 package com.jtrull.alzdetection;
 
-import org.junit.Assert;
 import org.junit.experimental.ParallelComputer;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -24,19 +23,21 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.io.ByteStreams;
-import com.jtrull.alzdetection.Image.ImagePrediction;
-import com.jtrull.alzdetection.Image.ImageRepository;
-import com.jtrull.alzdetection.Model.Model;
-import com.jtrull.alzdetection.Model.ModelRepository;
-import com.jtrull.alzdetection.Model.ModelService;
-import com.jtrull.alzdetection.Prediction.ImpairmentEnum;
 import com.jtrull.alzdetection.exceptions.predictions.InvalidImpairmentCategoryException;
 import com.jtrull.alzdetection.exceptions.predictions.PredictionFailureException;
 import com.jtrull.alzdetection.exceptions.predictions.PredictionNotFoundException;
+import com.jtrull.alzdetection.image.ImagePrediction;
+import com.jtrull.alzdetection.image.ImageRepository;
+import com.jtrull.alzdetection.model.Model;
+import com.jtrull.alzdetection.model.ModelRepository;
+import com.jtrull.alzdetection.model.ModelService;
+import com.jtrull.alzdetection.prediction.ImpairmentEnum;
+import com.jtrull.alzdetection.general.Utils;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -62,7 +63,6 @@ public class TestImagePrediction {
 	@Autowired private ImageRepository imageRepository;
     @Autowired private ModelRepository modelRepository;
     @Autowired private ModelService modelService;
-    @Autowired private Utils utils;
 
     private static final String BASE_URL = "/api/v1/model";
     private static final String ID_KEY = "?id=";
@@ -144,13 +144,13 @@ public class TestImagePrediction {
         ImagePrediction prediction = MAPPER.readValue(content, ImagePrediction.class);
 
         // Assert if a picture is passed in that we have the known predictions for, the predictions will match
-        Assert.assertEquals("Found not matching impairment level",
+        assertEquals("Found not matching impairment level",
             prediction.getConf_NoImpairment(),initialImagePrediction.getConf_NoImpairment());
-        Assert.assertEquals("Found not matching impairment level",
+        assertEquals("Found not matching impairment level",
             prediction.getConf_VeryMildImpairment(),initialImagePrediction.getConf_VeryMildImpairment());
-        Assert.assertEquals("Found not matching impairment level",
+        assertEquals("Found not matching impairment level",
             prediction.getConf_MildImpairment(),initialImagePrediction.getConf_MildImpairment());
-        Assert.assertEquals("Found not matching impairment level",
+        assertEquals("Found not matching impairment level",
             prediction.getConf_ModerateImpairment(),initialImagePrediction.getConf_ModerateImpairment());
 	}
 
@@ -184,7 +184,7 @@ public class TestImagePrediction {
 	@Order(2)
     @RepeatedTest(TEST_INVOCATIONS)
     public void testPredictionFromInvalidFile() throws Exception {
-        String path = this.utils.returnImagePath();
+        String path = Utils.returnImagePath();
 		String filepath = path + "/test.json";
 
 		JSONObject json = new JSONObject();
@@ -262,17 +262,15 @@ public class TestImagePrediction {
         ImagePrediction initialPrediction = getInitialImagePrediction();
         long invalidId = 2345234523452345L;
         String url = createGetPredictionUrl(invalidId, initialPrediction.getId());
-       
-            mvc.perform(get(url)
-                .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().is4xxClientError())
-                .andExpect(result -> assertTrue("Unexpected exception type!", 
-                    result.getResolvedException() instanceof PredictionNotFoundException))
-                .andExpect(result -> assertTrue("Unexpected message:" + result.getResolvedException().getMessage(), 
-                    result.getResolvedException().getMessage().contains(PredictionNotFoundException.MESSAGE)));
+        mvc.perform(get(url)
+            .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().is4xxClientError())
+            .andExpect(result -> assertTrue("Unexpected exception type!", 
+                result.getResolvedException() instanceof PredictionNotFoundException))
+            .andExpect(result -> assertTrue("Unexpected message:" + result.getResolvedException().getMessage(), 
+                result.getResolvedException().getMessage().contains(PredictionNotFoundException.MESSAGE)));
          
     }
-    
 
     /**
 	 * Run all tests in class concurrently
@@ -284,21 +282,19 @@ public class TestImagePrediction {
         Class<?>[] classes  = new Class<?>[numConcurrent];
         Arrays.fill(classes, TestImagePrediction.class);
         Result result = JUnitCore.runClasses(new ParallelComputer(true, true), classes);
-        Assert.assertTrue("Failed during execution of concurrent tests", result.wasSuccessful());
+        assertTrue("Failed during execution of concurrent tests", result.wasSuccessful());
     }
 
     /**
-     * TODO:
+     * Delete 
      * @throws Exception
      */
     @Order(5)
     @RepeatedTest(TEST_INVOCATIONS)
     public void testDeletePrediction() throws Exception {
-        Optional<ImagePrediction> imageOpt = imageRepository.findAll().stream()
-            .filter(i -> i.getAssociatedModel() == 1L).findFirst();
+        Optional<ImagePrediction> imageOpt = imageRepository.findAll().stream().filter(i -> i.getAssociatedModel() == 1L).findFirst();
         if (imageOpt.isEmpty()) {
-            String url = createPredictUrl(getModel(1L).getId());
-            mvc.perform(get(url + "/random")
+            mvc.perform(get(createPredictUrl(getModel(1L).getId()) + "/random")
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().is2xxSuccessful());
             imageOpt = imageRepository.findAll().stream().filter(i -> i.getAssociatedModel() == 1L).findFirst();
@@ -311,12 +307,13 @@ public class TestImagePrediction {
             .andExpect(status().is2xxSuccessful())
             .andReturn();
         String content = _return.getResponse().getContentAsString();
-        Assert.assertNotNull("Unable to validate return of delete request, expected boolean", content);
-        Assert.assertTrue("Result of delete request did not match expected true", Boolean.valueOf(content));
+        assertNotNull("Unable to validate return of delete request, expected boolean", content);
+        assertTrue("Result of delete request did not match expected true", Boolean.valueOf(content));
     }
 
     /**
-     * TODO:
+     * Attempt to delete an ImagePrediction with invalid ID and validate it is unsuccessful
+     * 
      * @throws Exception
      */
     @Order(5)
@@ -331,6 +328,25 @@ public class TestImagePrediction {
             .andExpect(result -> assertTrue("Unexpected message:" + result.getResolvedException().getMessage(), 
                 result.getResolvedException().getMessage().contains(PredictionNotFoundException.MESSAGE)));
     }
+
+    /**
+     * 
+     * @throws Exception
+     */
+    @Order(6)
+    @RepeatedTest(TEST_INVOCATIONS)
+    public void testBatchPredictTestImages() throws Exception {
+        String url = createPredictUrl(getModel().getId()) + "/test";
+        MvcResult result = mvc.perform(get(url)
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andReturn();
+        String content = result.getResponse().getContentAsString();
+        assertNotNull("Unable to read content from result of prediction GET request to URL:" + url, content);
+        List<ImagePrediction> predictions = Arrays.asList(MAPPER.readValue(content, ImagePrediction[].class));
+        assertNotNull("Unable to marshall predictions object from content:" + content, predictions);
+    }
+    
 
     private String createPredictUrl(Long modelId) {
         return BASE_URL + "/" + String.valueOf(modelId) + "/predict";
@@ -354,7 +370,7 @@ public class TestImagePrediction {
             List<Model> allModels = modelRepository.findAll();
             // load models into the model repository
             for (int i = allModels.size(); i<=10; i++) {
-                TestModel.runLoadModelRequest(modelService, getClass(), mvc);
+                TestModel.runLoadModelRequest(modelService, getClass(), mvc, false);
             }
             allModels = modelRepository.findAll();
 
@@ -362,14 +378,16 @@ public class TestImagePrediction {
                 return allModels.stream()
                     .filter(m -> m.getId() == desiredId)
                     .findFirst()
-                    .orElseThrow(() -> new AssertionError("Unable to pick model with Id: " + desiredId));
+                    .orElseThrow(() -> 
+                        new AssertionError("Unable to pick model with Id: " + desiredId));
             }
 
             // pick a random model
             return allModels.stream()
                 .skip(new Random().nextInt(allModels.size()))
                 .findAny()
-                .orElseThrow(() -> new AssertionError("Unable to pick random model!"));
+                .orElseThrow(() -> 
+                    new AssertionError("Unable to find a random model!"));
         }
     }
 
@@ -380,12 +398,12 @@ public class TestImagePrediction {
      */
     public void validatePrediction(MvcResult _return) throws UnsupportedEncodingException {
         String content = _return.getResponse().getContentAsString();
-        Assert.assertNotNull("Unable to find ImagePrediction object after random prediction request", content);
+        assertNotNull("Unable to find ImagePrediction object after random prediction request", content);
         ImagePrediction prediction = null;
         try {
             prediction = MAPPER.readValue(content, ImagePrediction.class);
-        } catch (JsonProcessingException e) { Assert.fail("Return from image prediction unable to parse to ImagePrediction object!"); }
-		Assert.assertNotNull("Failed during marshalling of ImagePrediction object after request", prediction);
+        } catch (JsonProcessingException e) { fail("Return from image prediction unable to parse to ImagePrediction object!"); }
+		assertNotNull("Failed during marshalling of ImagePrediction object after request", prediction);
     }
 }
 

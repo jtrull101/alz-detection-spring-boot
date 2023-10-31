@@ -1,4 +1,4 @@
-package com.jtrull.alzdetection.Prediction;
+package com.jtrull.alzdetection.prediction;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -26,7 +26,8 @@ public enum ImpairmentEnum {
         return Stream.of(values())
             .filter(ie -> ie.toString().equals(val))
             .findFirst()
-            .orElseThrow(() -> new InvalidImpairmentCategoryException(val));
+            .orElseThrow(() -> 
+                new InvalidImpairmentCategoryException(val));
     }
 
     public static List<String> asStrings() {
